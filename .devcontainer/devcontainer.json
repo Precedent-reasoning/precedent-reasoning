@@ -1,0 +1,47 @@
+{
+  "name": "Precedent Reasoning",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    }
+  },
+
+  // Forward backend (8000) and frontend (3000)
+  "forwardPorts": [8000, 3000],
+  "portsAttributes": {
+    "8000": { "label": "FastAPI backend" },
+    "3000": { "label": "Next.js frontend" }
+  },
+
+  // Install all dependencies once the container is created
+  "postCreateCommand": "bash .devcontainer/setup.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "bradlc.vscode-tailwindcss",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/workspace/backend/.venv/bin/python",
+        "editor.formatOnSave": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        }
+      }
+    }
+  },
+
+  "remoteEnv": {
+    // Copy your .env values here, or mount a secrets file.
+    // Do NOT commit real API keys to this file.
+    "ANTHROPIC_API_KEY": "${localEnv:ANTHROPIC_API_KEY}",
+    "TAVILY_API_KEY": "${localEnv:TAVILY_API_KEY}"
+  }
+}

@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Precedent Reasoning — Retrieval Pipeline</title>
+<style>
+  :root {
+    --bg: oklch(0.16 0.025 255);
+    --bg-2: oklch(0.195 0.027 255);
+    --bg-3: oklch(0.235 0.03 255);
+    --border: oklch(0.34 0.03 255 / 0.5);
+    --border-2: oklch(0.42 0.035 255 / 0.7);
+    --text: oklch(0.96 0.008 255);
+    --muted: oklch(0.72 0.025 255);
+    --faint: oklch(0.55 0.022 255);
+    --accent: oklch(0.66 0.15 250);
+    --accent-2: oklch(0.78 0.13 250);
+    --amber: oklch(0.78 0.14 80);
+    --amber-2: oklch(0.85 0.12 85);
+    --good: oklch(0.74 0.13 160);
+    --r-sm: 8px;
+    --r-md: 12px;
+    --r-lg: 18px;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    padding: 56px 20px 80px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .page {
+    width: 100%;
+    max-width: 760px;
+  }
+
+  /* ---------- header ---------- */
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent-2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+
+  .eyebrow .mark {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--faint);
+  }
+
+  h1 {
+    font-size: 28px;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    margin: 0 0 12px;
+    text-wrap: balance;
+    max-width: 30ch;
+  }
+
+  .lede {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--muted);
+    max-width: 56ch;
+    margin: 0 0 44px;
+  }
+
+  .lede code {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent-2);
+  }
+
+  /* ---------- pipeline scaffold ---------- */
+
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .connector {
+    display: flex;
+    justify-content: center;
+    height: 34px;
+  }
+
+  .connector .line {
+    width: 1px;
+    background: var(--border-2);
+  }
+
+  .connector .caption {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--faint);
+    background: var(--bg);
+    padding: 0 10px;
+    white-space: nowrap;
+    align-self: center;
+  }
+
+  .connector.labelled {
+    position: relative;
+  }
+
+  .connector.labelled .line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+  }
+
+  .connector.labelled .caption {
+    margin: auto;
+    z-index: 1;
+  }
+
+  /* ---------- stage card ---------- */
+
+  .stage {
+    position: relative;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 18px 22px;
+  }
+
+  .stage-head {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .stage-n {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-2);
+    letter-spacing: 0.06em;
+    flex: none;
+  }
+
+  .stage-title {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+
+  .stage-desc {
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--muted);
+    margin: 0 0 10px;
+    max-width: 58ch;
+  }
+
+  .stage-impl {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--faint);
+    letter-spacing: 0.01em;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  .stage-impl b {
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  /* query bubble */
+  .query-stage {
+    background: var(--bg-3);
+  }
+
+  .query-text {
+    font-family: var(--mono);
+    font-size: 13.5px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border-2);
+    border-radius: var(--r-sm);
+    padding: 10px 14px;
+    margin-top: 2px;
+  }
+
+  .query-text .q { color: var(--faint); }
+
+  /* ---------- fork ---------- */
+
+  .fork-connectors {
+    position: relative;
+    height: 44px;
+  }
+
+  .fork-connectors svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .fork-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 560px) {
+    .fork-row { grid-template-columns: 1fr; }
+    .fork-connectors { display: none; }
+  }
+
+  .branch-vector { border-color: color-mix(in oklab, var(--accent) 45%, var(--border)); }
+  .branch-fts { border-color: color-mix(in oklab, var(--amber) 45%, var(--border)); }
+
+  .branch-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 99px;
+    margin-bottom: 10px;
+  }
+
+  .branch-tag.vector { color: var(--accent-2); background: color-mix(in oklab, var(--accent) 16%, transparent); }
+  .branch-tag.fts { color: var(--amber-2); background: color-mix(in oklab, var(--amber) 16%, transparent); }
+  .branch-tag.store { color: var(--good); background: color-mix(in oklab, var(--good) 16%, transparent); }
+
+  .branch-tag .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 99px;
+    background: currentColor;
+  }
+
+  /* ---------- terminal (agent) stage ---------- */
+
+  .stage.terminal {
+    background: linear-gradient(160deg, var(--bg-3), var(--bg-2));
+    border-color: var(--border-2);
+  }
+
+  .stage.terminal .stage-title { color: var(--text); }
+
+  .stage.terminal::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-md);
+    box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 30%, transparent) inset;
+    pointer-events: none;
+  }
+
+  .output-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
+  .output-chips span {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--muted);
+    border: 1px solid var(--border-2);
+    border-radius: 6px;
+    padding: 3px 8px;
+  }
+
+  /* ---------- legend ---------- */
+
+  .legend {
+    display: flex;
+    gap: 22px;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--faint);
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .legend-item .swatch {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+  }
+
+  .legend-item .swatch.vector { background: var(--accent); }
+  .legend-item .swatch.fts { background: var(--amber); }
+  .legend-item .swatch.store { background: var(--good); }
+
+  /* ---------- motion ---------- */
+
+  .stage, .connector, .fork-connectors {
+    animation: rise 0.5s ease backwards;
+  }
+  .pipeline > *:nth-child(1) { animation-delay: 0.02s; }
+  .pipeline > *:nth-child(2) { animation-delay: 0.06s; }
+  .pipeline > *:nth-child(3) { animation-delay: 0.10s; }
+  .pipeline > *:nth-child(4) { animation-delay: 0.14s; }
+  .pipeline > *:nth-child(5) { animation-delay: 0.18s; }
+  .pipeline > *:nth-child(6) { animation-delay: 0.22s; }
+  .pipeline > *:nth-child(7) { animation-delay: 0.26s; }
+  .pipeline > *:nth-child(8) { animation-delay: 0.30s; }
+  .pipeline > *:nth-child(9) { animation-delay: 0.34s; }
+  .pipeline > *:nth-child(10) { animation-delay: 0.38s; }
+  .pipeline > *:nth-child(11) { animation-delay: 0.42s; }
+  .pipeline > *:nth-child(12) { animation-delay: 0.46s; }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stage, .connector, .fork-connectors { animation: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <div class="eyebrow"><span class="mark">§</span> PRECEDENT — RETRIEVAL PIPELINE</div>
+  <h1>How a plain-English question becomes five cited cases</h1>
+  <p class="lede">
+    Eight stages, spanning <code>agent.py</code>, <code>tools/corpus.py</code> and
+    <code>ingest.py</code>'s local index — one embedding, two parallel search
+    strategies, one rerank, one fetch. No step ever touches the internet;
+    everything queries the local index built by <code>ingest.py</code>.
+  </p>
+
+  <div class="pipeline">
+
+    <div class="stage query-stage">
+      <div class="stage-head">
+        <span class="stage-n">01</span>
+        <span class="stage-title">User query</span>
+      </div>
+      <p class="stage-desc">A natural-language description of the user's legal situation.</p>
+      <div class="query-text"><span class="q">"</span>my landlord won't return my bond after I moved out<span class="q">"</span></div>
+    </div>
+
+    <div class="connector labelled"><div class="line"></div><div class="caption">agent.py — situation text</div></div>
+
+    <div class="stage">
+      <div class="stage-head">
+        <span class="stage-n">02</span>
+        <span class="stage-title">Embed the query</span>
+      </div>
+      <p class="stage-desc">Prefixed with <code style="font-family:var(--mono)">search_query:</code> and encoded into a single dense vector that captures meaning, not just keywords.</p>
+      <div class="stage-impl"><b>nomic-embed-text-v1.5</b> · 768-dim · MPS / bfloat16</div>
+    </div>
+
+    <div class="fork-connectors">
+      <svg viewBox="0 0 100 44" preserveAspectRatio="none">
+        <path d="M 50 0 C 50 16, 25 16, 25 44" fill="none" stroke="var(--border-2)" stroke-width="0.6"/>
+        <path d="M 50 0 C 50 16, 75 16, 75 44" fill="none" stroke="var(--border-2)" stroke-width="0.6"/>
+      </svg>
+    </div>
+
+    <div class="fork-row">
+      <div class="stage branch-vector">
+        <span class="branch-tag vector"><span class="dot"></span>semantic</span>
+        <div class="stage-head">
+          <span class="stage-n">03a</span>
+          <span class="stage-title">Vector search</span>
+        </div>
+        <p class="stage-desc">Cosine similarity over every chunk's embedding — finds chunks that mean the same thing, even with different wording.</p>
+        <div class="stage-impl"><b>LanceDB</b> · top 50 chunks</div>
+      </div>
+
+      <div class="stage branch-fts">
+        <span class="branch-tag fts"><span class="dot"></span>lexical</span>
+        <div class="stage-head">
+          <span class="stage-n">03b</span>
+          <span class="stage-title">Full-text search</span>
+        </div>
+        <p class="stage-desc">BM25 keyword search over the same chunk text — catches exact citations, party names, statutory terms embeddings can blur.</p>
+        <div class="stage-impl"><b>LanceDB FTS</b> · top 50 chunks</div>
+      </div>
+    </div>
+
+    <div class="fork-connectors">
+      <svg viewBox="0 0 100 44" preserveAspectRatio="none">
+        <path d="M 25 0 C 25 28, 50 28, 50 44" fill="none" stroke="var(--border-2)" stroke-width="0.6"/>
+        <path d="M 75 0 C 75 28, 50 28, 50 44" fill="none" stroke="var(--border-2)" stroke-width="0.6"/>
+      </svg>
+    </div>
+
+    <div class="stage">
+      <div class="stage-head">
+        <span class="stage-n">04</span>
+        <span class="stage-title">Merge &amp; dedupe</span>
+      </div>
+      <p class="stage-desc">Both result sets are combined by <code style="font-family:var(--mono)">chunk_id</code>; a chunk found by both searches is kept once.</p>
+      <div class="stage-impl"><b>tools/corpus.py</b> — <b>search_cases()</b> · ~50&ndash;100 candidate chunks</div>
+    </div>
+
+    <div class="connector labelled"><div class="line"></div><div class="caption">candidates</div></div>
+
+    <div class="stage">
+      <div class="stage-head">
+        <span class="stage-n">05</span>
+        <span class="stage-title">Rerank</span>
+      </div>
+      <p class="stage-desc">A cross-encoder scores the query and each candidate <em>together</em> — slower than the first pass, but far more precise, so it only needs to run on the short candidate list.</p>
+      <div class="stage-impl"><b>zerank-1-small-reranker</b> · cross-encoder</div>
+    </div>
+
+    <div class="connector labelled"><div class="line"></div><div class="caption">sorted by relevance</div></div>
+
+    <div class="stage">
+      <div class="stage-head">
+        <span class="stage-n">06</span>
+        <span class="stage-title">Select top cases</span>
+      </div>
+      <p class="stage-desc">Highest-scoring chunk per case wins the case slot; the case list is capped at <code style="font-family:var(--mono)">max_results</code> (default 5). Its top 3 scored chunks are remembered, keyed by URL, for the fetch step below.</p>
+      <div class="stage-impl">up to 5 <b>case_id</b> / <b>url</b> pairs · top-3 chunk_index per case cached</div>
+    </div>
+
+    <div class="connector labelled"><div class="line"></div><div class="caption">case_id, url</div></div>
+
+    <div class="stage">
+      <span class="branch-tag store"><span class="dot"></span>persisted store</span>
+      <div class="stage-head">
+        <span class="stage-n">07</span>
+        <span class="stage-title">Fetch case text</span>
+      </div>
+      <p class="stage-desc">A flat head-of-document read would often miss the passage that made a long judgment match in the first place. Instead, LanceDB is queried for that case's actually-matched chunks (from stage 06) plus its first and last chunk — catchwords and orders, wherever the match fell. Falls back to a capped SQLite read if the case wasn't matched by a recent search.</p>
+      <div class="stage-impl"><b>LanceDB</b> chunks (matched + first/last) → <b>SQLite</b> fallback (≤8,000 chars) · <b>fetch_case()</b> / <b>fetch_cases()</b></div>
+    </div>
+
+    <div class="connector labelled"><div class="line"></div><div class="caption">up to 5 cases, matched passages + bookends</div></div>
+
+    <div class="stage terminal">
+      <div class="stage-head">
+        <span class="stage-n">08</span>
+        <span class="stage-title">Agent reads &amp; explains</span>
+      </div>
+      <p class="stage-desc">Claude reads the retrieved text, states binding/persuasive status, and explains how each case compares to the user's situation — streamed token by token.</p>
+      <div class="stage-impl"><b>claude-sonnet-4-6</b> · agent.py — run_agent()</div>
+      <div class="output-chips">
+        <span>citation + court</span>
+        <span>what the court held</span>
+        <span>how it compares</span>
+        <span>disclaimer</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="legend">
+    <div class="legend-item"><span class="swatch vector"></span>semantic / vector path</div>
+    <div class="legend-item"><span class="swatch fts"></span>lexical / full-text path</div>
+    <div class="legend-item"><span class="swatch store"></span>persisted store</div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,51 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# generated from ../landing/ by scripts/sync-landing.mjs (predev/prebuild) —
+# public/landing/index.html stays committed, it's hand-maintained
+/public/landing/sections.jsx
+/public/landing/search.jsx
+/public/landing/case-data.jsx
+/public/landing/app.jsx
+/public/landing/theme.jsx
+/public/landing/tweaks-panel.jsx
+/public/landing/styles.css
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
