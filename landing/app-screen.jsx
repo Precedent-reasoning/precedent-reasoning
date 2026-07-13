@@ -143,6 +143,9 @@ function AgentStatus({ steps, issues, mode }) {
         <span>Agent working…</span>
         {mode === "local" && <span className="agent-mode"><LockIcon s={11} /> On-device</span>}
       </div>
+      <div className="rp-demo-note">
+        <b>Demo.</b> This search and the steps below are simulated for this walkthrough, not real output from Precedent Reasoning's case-law search.
+      </div>
       <div className="steps-col">
         {steps.map((s, i) => {
           const last = i === steps.length - 1;
@@ -197,7 +200,7 @@ function ResultsPanel({ results }) {
       <div className="rp-head"><span>Results</span><span className="live demo">● illustrative demo data</span></div>
       <div className="rp-body">
         <div className="rp-demo-note">
-          <b>Demo results.</b> These cases and citations are illustrative placeholders for this walkthrough, not real output from the live search index.
+          <b>Demo results.</b> These cases and citations are illustrative placeholders for this walkthrough, not real output from Precedent Reasoning's case-law search.
         </div>
         <p className="rp-intro">
           Here are the most relevant decisions for your situation, ranked by how closely they apply. This is
@@ -219,11 +222,8 @@ function EmptyState({ onPick, disabled }) {
   return (
     <React.Fragment>
       <div className="intro-head">
-        <div className="intro-logo">§</div>
-        <div>
-          <h2>Precedent Reasoning</h2>
-          <p>Find relevant Australian cases for your legal situation. Powered by AI.</p>
-        </div>
+        <h2>Precedent Reasoning</h2>
+        <p>Find relevant Australian cases for your legal situation. Powered by AI.</p>
       </div>
       <div className="about">
         <h3>About this tool</h3>

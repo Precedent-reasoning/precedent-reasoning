@@ -193,7 +193,7 @@ function Features() {
 const TRUST_ITEMS = [
   { t: "Information, not advice", d: "It surfaces what courts decided and the principles that apply. It won't tell you what to do or predict your outcome." },
   { t: "Every claim is cited", d: "Each case links to its full judgment, so you can read the source and check it yourself." },
-  { t: "Your history stays yours", d: "Your research history is stored only in your browser — never sent to or saved on our servers — and you can delete it anytime." },
+  { t: "Your history stays yours", d: "Your search history stays with you and you can delete it anytime." },
 ];
 
 function Trust() {
