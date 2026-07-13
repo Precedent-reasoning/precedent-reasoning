@@ -6,6 +6,8 @@ Find the cases that matter. An AI-powered legal research tool for NSW residents.
 
 > **Legal information only.** This tool surfaces case law and explains legal principles. It does not provide legal advice. Always consult a qualified NSW solicitor for advice specific to your circumstances.
 
+**[Live demo →](https://precedent-reasoning.github.io/demo.html)** — a self-contained mock of the app with a simulated agent search and sample results, no setup required. ([Landing page](https://precedent-reasoning.github.io/))
+
 ![Precedent Reasoning](landing/logo-wordmark.png)
 
 ---
@@ -46,7 +48,7 @@ High Court decisions on common law principles (negligence, contract) also bind a
 - Python 3.11+
 - Node.js 18+
 - [Anthropic API key](https://console.anthropic.com/) — the only API key required
-- ~10 GB free disk for the downloaded corpus + local index (Apple Silicon with MPS recommended for reasonable ingestion speed, but not required)
+- ~10 GB free disk for the downloaded corpus + local index (a GPU is recommended for reasonable ingestion speed, but not required)
 
 ### 1. Backend
 

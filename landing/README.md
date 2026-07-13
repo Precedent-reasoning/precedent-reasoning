@@ -8,7 +8,7 @@ the dark-navy brand. Plain static HTML — no build step.
 | File | What it is |
 |------|-----------|
 | `Legal Case Finder.html` | The landing page (entry point) |
-| `Legal Case Finder App.html` | The "Start free" destination — dark app UI with a simulated streaming agent + sample results |
+| `demo.html` | The "Start free" destination — dark app UI with a simulated streaming agent + sample results |
 | `search.jsx` | Hero section + interactive search demo |
 | `sections.jsx` | Nav, How it works, Capabilities, Trust, Pricing, CTA, Footer |
 | `app-screen.jsx` | The app screen (sidebar, chat, faked agent stream, results) |

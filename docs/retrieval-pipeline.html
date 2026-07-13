@@ -385,7 +385,7 @@
         <span class="stage-title">Embed the query</span>
       </div>
       <p class="stage-desc">Prefixed with <code style="font-family:var(--mono)">search_query:</code> and encoded into a single dense vector that captures meaning, not just keywords.</p>
-      <div class="stage-impl"><b>nomic-embed-text-v1.5</b> · 768-dim · MPS / bfloat16</div>
+      <div class="stage-impl"><b>embedding model</b> · 768-dim vector</div>
     </div>
 
     <div class="fork-connectors">
@@ -403,7 +403,7 @@
           <span class="stage-title">Vector search</span>
         </div>
         <p class="stage-desc">Cosine similarity over every chunk's embedding — finds chunks that mean the same thing, even with different wording.</p>
-        <div class="stage-impl"><b>LanceDB</b> · top 50 chunks</div>
+        <div class="stage-impl"><b>vector index</b> · top 50 chunks</div>
       </div>
 
       <div class="stage branch-fts">
@@ -413,7 +413,7 @@
           <span class="stage-title">Full-text search</span>
         </div>
         <p class="stage-desc">BM25 keyword search over the same chunk text — catches exact citations, party names, statutory terms embeddings can blur.</p>
-        <div class="stage-impl"><b>LanceDB FTS</b> · top 50 chunks</div>
+        <div class="stage-impl"><b>full-text index</b> · top 50 chunks</div>
       </div>
     </div>
 
@@ -441,7 +441,7 @@
         <span class="stage-title">Rerank</span>
       </div>
       <p class="stage-desc">A cross-encoder scores the query and each candidate <em>together</em> — slower than the first pass, but far more precise, so it only needs to run on the short candidate list.</p>
-      <div class="stage-impl"><b>zerank-1-small-reranker</b> · cross-encoder</div>
+      <div class="stage-impl"><b>cross-encoder reranker</b></div>
     </div>
 
     <div class="connector labelled"><div class="line"></div><div class="caption">sorted by relevance</div></div>
@@ -464,7 +464,7 @@
         <span class="stage-title">Fetch case text</span>
       </div>
       <p class="stage-desc">A flat head-of-document read would often miss the passage that made a long judgment match in the first place. Instead, LanceDB is queried for that case's actually-matched chunks (from stage 06) plus its first and last chunk — catchwords and orders, wherever the match fell. Falls back to a capped SQLite read if the case wasn't matched by a recent search.</p>
-      <div class="stage-impl"><b>LanceDB</b> chunks (matched + first/last) → <b>SQLite</b> fallback (≤8,000 chars) · <b>fetch_case()</b> / <b>fetch_cases()</b></div>
+      <div class="stage-impl"><b>vector index</b> chunks (matched + first/last) → <b>relational store</b> fallback (≤8,000 chars) · <b>fetch_case()</b> / <b>fetch_cases()</b></div>
     </div>
 
     <div class="connector labelled"><div class="line"></div><div class="caption">up to 5 cases, matched passages + bookends</div></div>
@@ -475,7 +475,7 @@
         <span class="stage-title">Agent reads &amp; explains</span>
       </div>
       <p class="stage-desc">Claude reads the retrieved text, states binding/persuasive status, and explains how each case compares to the user's situation — streamed token by token.</p>
-      <div class="stage-impl"><b>claude-sonnet-4-6</b> · agent.py — run_agent()</div>
+      <div class="stage-impl"><b>LLM agent</b> · agent.py — run_agent()</div>
       <div class="output-chips">
         <span>citation + court</span>
         <span>what the court held</span>

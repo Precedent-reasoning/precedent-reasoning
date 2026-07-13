@@ -42,7 +42,7 @@ An AI-enabled legal research tool that accepts natural-language descriptions of 
 
 - **Backend**: Python, FastAPI
 - **Agent**: Claude tool-use — `claude-sonnet-4-6` for search/reasoning, `claude-haiku-4-5-20251001` for conversation-title generation
-- **Embedding model**: `nomic-ai/nomic-embed-text-v1.5` (768-dim, MPS/bfloat16 on Apple Silicon)
+- **Embedding model**: `nomic-ai/nomic-embed-text-v1.5` (768-dim, bfloat16, GPU-accelerated where available)
 - **Reranker**: `zeroentropy/zerank-1-small-reranker` cross-encoder
 - **Vector + FTS store**: LanceDB · **Full case text store**: SQLite
 - **Frontend**: Next.js (App Router) with streaming responses

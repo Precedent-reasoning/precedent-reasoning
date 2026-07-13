@@ -1,7 +1,7 @@
 // sections.jsx — Nav, How it works, Features, Trust, Pricing, CTA, Footer (Australia-wide)
 const { useState: useStateS, useEffect: useEffectS } = React;
 
-const APP_URL = window.APP_URL || "Legal Case Finder App.html";
+const APP_URL = window.APP_URL || "demo.html";
 const GITHUB_URL = "https://github.com/Precedent-reasoning/precedent-reasoning";
 
 function CloudGlyph({ s = 18 }) {
@@ -54,7 +54,9 @@ function Nav() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
   return (
-    <nav className={"nav" + (stuck || open ? " stuck" : "")} id="top">
+    <>
+    <div id="top" style={{ position: "absolute", top: 0 }}></div>
+    <nav className={"nav" + (stuck || open ? " stuck" : "")}>
       <div className="container nav-inner">
         <Brand />
         <div className="nav-links">
@@ -96,6 +98,7 @@ function Nav() {
         </div>
       )}
     </nav>
+    </>
   );
 }
 
@@ -213,7 +216,7 @@ function Trust() {
           </p>
           <div className="sec-badges">
             <span className="badge">Linked to source</span>
-            <span className="badge">No legal advice</span>
+            <span className="badge">Not legal advice</span>
             <span className="badge">Never trains on your data</span>
           </div>
         </Reveal>

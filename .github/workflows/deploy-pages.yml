@@ -36,7 +36,6 @@ jobs:
             cp -R "$f" "./$base"
           done
           mv "Legal Case Finder.html" index.html
-          mv "Legal Case Finder App.html" demo.html
 
       - name: Commit and push
         run: |

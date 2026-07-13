@@ -10,9 +10,9 @@
 // set `window.APP_URL = "/app"` before the shared scripts load, pointing
 // CTAs at the real app route instead of landing/'s local demo mock.
 //
-// app-screen.jsx, app-styles.css, and the demo "Legal Case Finder App.html"
-// are intentionally excluded — they're the local demo mock, not needed
-// here since the real /app already exists.
+// app-screen.jsx, app-styles.css, and the demo "demo.html" are intentionally
+// excluded — they're the local demo mock, not needed here since the real
+// /app already exists.
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";

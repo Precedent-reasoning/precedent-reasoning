@@ -77,7 +77,7 @@ def _get_reranker() -> CrossEncoder:
         logger.info("Loading reranker %s…", RERANK_MODEL)
         # zerank-1-small is a Qwen3ForCausalLM (~4B params) despite the name —
         # must load in bfloat16 (its native dtype) or it doubles to ~16GB+ in fp32
-        # and blows the MPS memory ceiling.
+        # and blows the GPU memory ceiling.
         _reranker = CrossEncoder(
             RERANK_MODEL,
             trust_remote_code=True,
@@ -157,7 +157,7 @@ def search_cases(query: str, max_results: int = 5) -> list[dict]:
     pairs  = [(query, c["text"]) for c in candidates]
     # zerank's custom forward pass doesn't wrap itself in no_grad, so without this
     # every call retains a full autograd graph (28 transformer layers of
-    # activations) that's never freed — blows past the MPS memory ceiling within
+    # activations) that's never freed — blows past the GPU memory ceiling within
     # a single batch.
     with torch.no_grad():
         scores = reranker.predict(pairs)

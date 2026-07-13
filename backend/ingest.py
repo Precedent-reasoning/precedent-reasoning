@@ -1,7 +1,7 @@
 """
 One-time ingestion script: downloads the Open Australian Legal Corpus from
 HuggingFace, filters to NSW + Commonwealth court decisions, chunks the text,
-embeds with Qwen3-Embedding-8B (via sentence-transformers on MPS), and indexes
+embeds with Qwen3-Embedding-8B (via sentence-transformers), and indexes
 into LanceDB (vector) + SQLite (full text).
 
 Usage:
@@ -163,11 +163,11 @@ def main() -> None:
     embedder.max_seq_length = CHUNK_TOKENS
 
     if device == "mps":
-        logger.info("Warming up MPS kernel…")
+        logger.info("Warming up GPU kernel…")
         _dummy = [DOC_PREFIX + "warmup " * 100] * EMBED_BATCH
         embedder.encode(_dummy, batch_size=EMBED_BATCH, normalize_embeddings=True,
                         show_progress_bar=False, convert_to_numpy=True)
-        logger.info("MPS warm-up done.")
+        logger.info("GPU warm-up done.")
     else:
         logger.info("Using CPU (AMX) — no warm-up needed.")
 
@@ -194,7 +194,7 @@ def main() -> None:
 
     logger.info("Reading corpus from %s (%.1f GB)…", CORPUS_LOCAL, CORPUS_LOCAL.stat().st_size / 1e9)
     # Known count: 232560. Skip re-reading the 9.4 GB file just to count lines —
-    # that fills the OS page cache and leaves less unified memory for MPS.
+    # that fills the OS page cache and leaves less memory for the embedding model.
     TOTAL_DOCS = 232560
 
     text_buf: list[str] = []
