@@ -81,6 +81,15 @@ function ModeBar({ mode }) {
   );
 }
 
+// ---------------- Demo banner ----------------
+function DemoBanner() {
+  return (
+    <div className="demo-banner">
+      <span><b>You're viewing a demo.</b> Conversations and results are simulated for illustrative purposes only.</span>
+    </div>
+  );
+}
+
 // ---------------- Sidebar ----------------
 function Sidebar({ convos, activeId, onSelect, onNew, onDelete, open, onClose, mode, onMode }) {
   const [q, setQ] = uS("");
@@ -88,11 +97,10 @@ function Sidebar({ convos, activeId, onSelect, onNew, onDelete, open, onClose, m
   return (
     <aside className={"side" + (open ? " open" : "")}>
       <div className="side-head">
-        <div className="side-mark">§</div>
         <div className="meta">
-          <div className="ey">Australian</div>
-          <div className="nm">Precedent Reasoning</div>
+          <img src="logo-wordmark.png" alt="Precedent Reasoning" className="side-wordmark" />
         </div>
+        <span className="demo-pill">Demo</span>
       </div>
       <div className="side-block">
         <div className="mode-label">Where it runs</div>
@@ -184,8 +192,11 @@ function CaseBlock({ r, i }) {
 function ResultsPanel({ results }) {
   return (
     <div className="rp">
-      <div className="rp-head"><span>Results</span><span className="live">● real Australian decisions</span></div>
+      <div className="rp-head"><span>Results</span><span className="live demo">● illustrative demo data</span></div>
       <div className="rp-body">
+        <div className="rp-demo-note">
+          <b>Demo results.</b> These cases and citations are illustrative placeholders for this walkthrough, not real output from the live search index.
+        </div>
         <p className="rp-intro">
           Here are the most relevant decisions for your situation, ranked by how closely they apply. This is
           legal information — what courts have decided — not legal advice.
@@ -300,61 +311,64 @@ function App({ theme, setTweak }) {
   }
 
   return (
-    <div className="app">
-      <div className={"scrim" + (open ? " show" : "")} onClick={() => setOpen(false)} />
-      <Sidebar convos={convos} activeId={activeId} onSelect={handleSelect} onNew={handleNew} onDelete={handleDelete} open={open} onClose={() => setOpen(false)} mode={mode} onMode={setMode} />
-      <div className="main">
-        <div className="topbar">
-          <button className="burger" aria-label="Menu" onClick={() => setOpen(true)}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" /></svg>
-          </button>
-          <span className="t-name">Precedent Reasoning</span>
-        </div>
+    <div className="page-wrap">
+      <DemoBanner />
+      <div className="app">
+        <div className={"scrim" + (open ? " show" : "")} onClick={() => setOpen(false)} />
+        <Sidebar convos={convos} activeId={activeId} onSelect={handleSelect} onNew={handleNew} onDelete={handleDelete} open={open} onClose={() => setOpen(false)} mode={mode} onMode={setMode} />
+        <div className="main">
+          <div className="topbar">
+            <button className="burger" aria-label="Menu" onClick={() => setOpen(true)}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" /></svg>
+            </button>
+            <span className="t-name">Precedent Reasoning <span className="demo-pill">Demo</span></span>
+          </div>
 
-        <div className="chat" ref={chatRef} onScroll={onScroll}>
-          <div className="chat-inner">
-            {!active && <EmptyState onPick={(q) => run(q)} disabled={!!searching} />}
-            {active && (
-              <div className="turn">
-                <div className="user-row"><div className="user-bub">{active.situation}</div></div>
-                {active.state === "searching" && <AgentStatus steps={active.steps} issues={active.issues} mode={active.mode || mode} />}
-                {active.results.length > 0 && <ResultsPanel results={active.results} />}
+          <div className="chat" ref={chatRef} onScroll={onScroll}>
+            <div className="chat-inner">
+              {!active && <EmptyState onPick={(q) => run(q)} disabled={!!searching} />}
+              {active && (
+                <div className="turn">
+                  <div className="user-row"><div className="user-bub">{active.situation}</div></div>
+                  {active.state === "searching" && <AgentStatus steps={active.steps} issues={active.issues} mode={active.mode || mode} />}
+                  {active.results.length > 0 && <ResultsPanel results={active.results} />}
+                </div>
+              )}
+              <div ref={bottomRef} />
+            </div>
+          </div>
+
+          <div className="composer">
+            <div className="composer-inner">
+              <ModeBar mode={mode} />
+              <div className="field">
+                <textarea ref={taRef} rows={1} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKey}
+                  disabled={!!searching} maxLength={2000}
+                  placeholder="Describe your legal situation…  (Enter to send, Shift+Enter for new line)" />
+                <button className="send" disabled={!!searching || !input.trim()} onClick={() => run(input)}>
+                  {searching ? "Searching…" : "Search"}
+                </button>
               </div>
-            )}
-            <div ref={bottomRef} />
+              <div className="cc">
+                <a className="tosite" href="index.html">← Back to Precedent Reasoning</a>
+                <span>{input.length}/2000</span>
+              </div>
+              <div className="disc">
+                <b>Legal information, not legal advice.</b> AI can make mistakes — always verify case citations against the original judgment, and consult a qualified solicitor for advice specific to your situation.
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="composer">
-          <div className="composer-inner">
-            <ModeBar mode={mode} />
-            <div className="field">
-              <textarea ref={taRef} rows={1} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKey}
-                disabled={!!searching} maxLength={2000}
-                placeholder="Describe your legal situation…  (Enter to send, Shift+Enter for new line)" />
-              <button className="send" disabled={!!searching || !input.trim()} onClick={() => run(input)}>
-                {searching ? "Searching…" : "Search"}
-              </button>
-            </div>
-            <div className="cc">
-              <a className="tosite" href="Legal Case Finder.html">← Back to Precedent Reasoning</a>
-              <span>{input.length}/2000</span>
-            </div>
-            <div className="disc">
-              <b>Legal information, not legal advice.</b> AI can make mistakes — always verify case citations against the original judgment, and consult a qualified solicitor for advice specific to your situation.
-            </div>
+        <TweaksPanel>
+          <TweakSection label="Color theme" />
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            {Object.keys(THEMES).map((key) => (
+              <ThemeSwatch key={key} id={key} active={theme === key} onClick={() => setTweak("theme", key)} />
+            ))}
           </div>
-        </div>
+        </TweaksPanel>
       </div>
-
-      <TweaksPanel>
-        <TweakSection label="Color theme" />
-        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-          {Object.keys(THEMES).map((key) => (
-            <ThemeSwatch key={key} id={key} active={theme === key} onClick={() => setTweak("theme", key)} />
-          ))}
-        </div>
-      </TweaksPanel>
     </div>
   );
 }

@@ -7,7 +7,7 @@ the dark-navy brand. Plain static HTML — no build step.
 
 | File | What it is |
 |------|-----------|
-| `Legal Case Finder.html` | The landing page (entry point) |
+| `index.html` | The landing page (entry point) |
 | `demo.html` | The "Start free" destination — dark app UI with a simulated streaming agent + sample results |
 | `search.jsx` | Hero section + interactive search demo |
 | `sections.jsx` | Nav, How it works, Capabilities, Trust, Pricing, CTA, Footer |
@@ -40,7 +40,7 @@ These reference each other with relative paths, so serve the folder (don't open 
 ```bash
 cd landing
 python3 -m http.server 8000
-# then open http://localhost:8000/Legal%20Case%20Finder.html
+# then open http://localhost:8000/
 ```
 
 ## Notes

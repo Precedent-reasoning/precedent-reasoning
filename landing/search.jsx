@@ -2,6 +2,7 @@
 const { useState, useEffect, useRef, useCallback } = React;
 
 const APP_URL_HERO = window.APP_URL || "demo.html";
+const APP_LABEL_HERO = window.APP_LABEL || "See a demo";
 
 function SearchIcon({ s = 18 }) {
   return (
@@ -133,7 +134,7 @@ function HeroSearch() {
                 <b>This demo is scripted</b> — it only knows the three sample situations above.
                 In the full product, the agent searches a pre-indexed database of NSW and Commonwealth case law for whatever you describe.
               </p>
-              <a className="btn btn-primary btn-sm" href={APP_URL_HERO}>Start free · search your situation</a>
+              <a className="btn btn-primary btn-sm" href={APP_URL_HERO}>{APP_LABEL_HERO}</a>
             </div>
           ) : (
             <div className="res-list">
@@ -160,7 +161,7 @@ function Hero() {
             to surface relevant decisions and explain how they compare.
           </p>
           <div className="hero-actions">
-            <a className="btn btn-primary btn-lg" href={APP_URL_HERO}>Search your situation</a>
+            <a className="btn btn-primary btn-lg" href={APP_URL_HERO}>{APP_LABEL_HERO}</a>
           </div>
           <div className="hero-trust">
             <span className="trust-stat"><b>NSW</b> &amp; Commonwealth courts</span>

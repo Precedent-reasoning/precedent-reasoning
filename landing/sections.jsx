@@ -2,6 +2,7 @@
 const { useState: useStateS, useEffect: useEffectS } = React;
 
 const APP_URL = window.APP_URL || "demo.html";
+const APP_LABEL = window.APP_LABEL || "See a demo";
 const GITHUB_URL = "https://github.com/Precedent-reasoning/precedent-reasoning";
 
 function CloudGlyph({ s = 18 }) {
@@ -74,8 +75,6 @@ function Nav() {
           >
             <GitHubGlyph />
           </a>
-          <a className="btn btn-ghost btn-sm" href={APP_URL}>Sign in</a>
-          <a className="btn btn-primary btn-sm" href={APP_URL}>Start free</a>
           <button
             className="nav-burger"
             aria-label={open ? "Close menu" : "Open menu"}
@@ -91,10 +90,6 @@ function Nav() {
           {NAV_LINKS.map(([href, label]) => (
             <a key={href} href={href} onClick={() => setOpen(false)}>{label}</a>
           ))}
-          <div className="nav-menu-cta">
-            <a className="btn btn-ghost" href={APP_URL}>Sign in</a>
-            <a className="btn btn-primary" href={APP_URL}>Start free</a>
-          </div>
         </div>
       )}
     </nav>
@@ -327,7 +322,7 @@ function CTA() {
           <h2>Stop guessing how it'll go.</h2>
           <p>See how courts across Australia have ruled on situations like yours — in the time it takes to describe one.</p>
           <div className="cta-actions">
-            <a className="btn btn-primary btn-lg" href={APP_URL}>Search your situation</a>
+            <a className="btn btn-primary btn-lg" href={APP_URL}>{APP_LABEL}</a>
             <a className="btn btn-ghost btn-lg" href="#pricing">Compare plans</a>
           </div>
         </Reveal>

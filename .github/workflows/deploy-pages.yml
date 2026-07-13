@@ -35,7 +35,6 @@ jobs:
             [ "$base" = "scraps" ] && continue
             cp -R "$f" "./$base"
           done
-          mv "Legal Case Finder.html" index.html
 
       - name: Commit and push
         run: |
