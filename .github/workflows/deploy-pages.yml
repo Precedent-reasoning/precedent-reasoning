@@ -1,0 +1,52 @@
+name: Deploy landing page to precedent-reasoning.github.io
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "landing/**"
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout precedent-reasoning
+        uses: actions/checkout@v4
+        with:
+          path: source
+
+      - name: Checkout precedent-reasoning.github.io
+        uses: actions/checkout@v4
+        with:
+          repository: Precedent-reasoning/precedent-reasoning.github.io
+          token: ${{ secrets.PAGES_DEPLOY_TOKEN }}
+          path: pages
+
+      - name: Sync landing files
+        run: |
+          set -e
+          cd pages
+          # Remove everything except .git, then repopulate from landing/
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          for f in ../source/landing/*; do
+            base=$(basename "$f")
+            [ "$base" = "README.md" ] && continue
+            [ "$base" = "scraps" ] && continue
+            cp -R "$f" "./$base"
+          done
+          mv "Legal Case Finder.html" index.html
+          mv "Legal Case Finder App.html" demo.html
+
+      - name: Commit and push
+        run: |
+          cd pages
+          git config user.name "precedent-reasoning-bot"
+          git config user.email "noreply@precedent-reasoning.github.io"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to deploy."
+            exit 0
+          fi
+          git commit -m "Sync landing page from precedent-reasoning@${{ github.sha }}"
+          git push
