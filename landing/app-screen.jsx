@@ -98,7 +98,9 @@ function Sidebar({ convos, activeId, onSelect, onNew, onDelete, open, onClose, m
     <aside className={"side" + (open ? " open" : "")}>
       <div className="side-head">
         <div className="meta">
-          <img src="logo-wordmark.png" alt="Precedent Reasoning" className="side-wordmark" />
+          <a href="index.html" aria-label="Back to Precedent Reasoning">
+            <img src="logo-wordmark.png" alt="Precedent Reasoning" className="side-wordmark" />
+          </a>
         </div>
         <span className="demo-pill">Demo</span>
       </div>

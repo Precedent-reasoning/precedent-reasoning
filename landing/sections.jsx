@@ -193,7 +193,7 @@ function Features() {
 const TRUST_ITEMS = [
   { t: "Information, not advice", d: "It surfaces what courts decided and the principles that apply. It won't tell you what to do or predict your outcome." },
   { t: "Every claim is cited", d: "Each case links to its full judgment, so you can read the source and check it yourself." },
-  { t: "Your history stays yours", d: "Your research history is encrypted, never sold, and never used to train models." },
+  { t: "Your history stays yours", d: "Your research history is stored only in your browser — never sent to or saved on our servers — and you can delete it anytime." },
 ];
 
 function Trust() {
@@ -212,7 +212,6 @@ function Trust() {
           <div className="sec-badges">
             <span className="badge">Linked to source</span>
             <span className="badge">Not legal advice</span>
-            <span className="badge">Never trains on your data</span>
           </div>
         </Reveal>
         <Reveal className="sec-list" style={{ transitionDelay: "90ms" }}>
@@ -277,7 +276,7 @@ const TIERS = [
     cta: "View source on GitHub", href: GITHUB_URL, external: true, primary: false, flag: "Self-hosted", flagAlt: true },
   { name: "Get in Touch", price: "Get In Touch", unit: "", badge: "Cloud & custom deployments", desc: "Our hosted cloud service, tailored and customised to your organisation's needs.",
     feats: ["Fully managed cloud service", "Custom integrations & workflows", "Onboarding & support", "Tailored to your requirements"],
-    cta: "Contact us", primary: true, flag: "Recommended" },
+    cta: "Contact us", disabled: true, primary: true, flag: "Recommended" },
 ];
 function Pricing() {
   return (
@@ -301,11 +300,18 @@ function Pricing() {
               <ul className="tier-feats">
                 {t.feats.map((f) => <li key={f}>{f}</li>)}
               </ul>
-              <a
-                className={"btn " + (t.primary ? "btn-primary" : "btn-ghost")}
-                href={t.href || APP_URL}
-                {...(t.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-              >{t.cta}</a>
+              {t.disabled ? (
+                <span
+                  className={"btn btn-disabled " + (t.primary ? "btn-primary" : "btn-ghost")}
+                  aria-disabled="true"
+                >{t.cta}</span>
+              ) : (
+                <a
+                  className={"btn " + (t.primary ? "btn-primary" : "btn-ghost")}
+                  href={t.href || APP_URL}
+                  {...(t.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                >{t.cta}</a>
+              )}
             </Reveal>
           ))}
         </div>
@@ -332,7 +338,7 @@ function CTA() {
 }
 
 const FOOT = [
-  { h: "Product", links: [["How it works", "#how"], ["Under the hood", "#engine"], ["Capabilities", "#features"], ["Coverage", "#coverage"], ["Pricing", "#pricing"], ["Source code", GITHUB_URL], ["Sign in", APP_URL]] },
+  { h: "Product", links: [["How it works", "#how"], ["Under the hood", "#engine"], ["Capabilities", "#features"], ["Coverage", "#coverage"], ["Pricing", "#pricing"], ["Source code", GITHUB_URL]] },
   { h: "Company", links: [["About", "#"], ["Careers", "#"], ["Contact", "#"]] },
   { h: "Legal", links: [["Terms", "#"], ["Privacy", "#"], ["Disclaimer", "#"], ["License (Apache-2.0)", GITHUB_URL + "/blob/main/LICENSE"]] },
 ];
