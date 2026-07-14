@@ -247,7 +247,7 @@ function Grounding() {
           <p style={{ color: "var(--muted)", marginTop: 16, fontSize: 18 }}>
             Large language models can state a plausible-sounding case that never existed. Precedent Reasoning is built to make
             that hard: the agent doesn't answer from what it was trained on — it searches a real, indexed set of published
-            judgments first, and can only talk about what it finds there. Every result has a link you can check and verify the information.
+            judgments first, and can only talk about what it finds there. Every result has a link from which you can check and verify the information.
           </p>
           <div className="sec-badges">
             <span className="badge">Retrieval, not recall</span>
