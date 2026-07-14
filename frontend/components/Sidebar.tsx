@@ -31,7 +31,9 @@ export function Sidebar({ conversations, activeId, onSelect, onNew, onDelete, is
     <aside className={"side" + (isOpen ? " open" : "")}>
       <div className="side-head">
         <div className="meta">
-          <img src="/logo-wordmark.png" alt="Precedent Reasoning" className="side-wordmark" />
+          <a href="/landing/index.html" aria-label="Precedent Reasoning home">
+            <img src="/logo-wordmark.png" alt="Precedent Reasoning" className="side-wordmark" />
+          </a>
         </div>
         <button className="close" onClick={onClose} aria-label="Close sidebar">×</button>
       </div>
