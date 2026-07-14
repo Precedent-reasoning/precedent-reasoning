@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import logging
 import asyncio
+import re
 import time
 from functools import partial
 import anthropic
@@ -186,13 +187,78 @@ def _set_cache_breakpoint(messages: list[dict]) -> None:
             last_block["cache_control"] = {"type": "ephemeral"}
 
 
-def _run_tool_sync(name: str, inputs: dict) -> str:
+def _run_tool_data(name: str, inputs: dict):
+    """Run a corpus tool and return its raw Python result (dict, or list of
+    dicts for search_cases) — not yet shaped into tool_result content. Kept
+    separate from `_tool_result_content` so the caller can also pull URLs
+    out of the raw data for citation verification."""
     if name == "search_cases":
-        return json.dumps(search_cases(**inputs), indent=2)
+        return search_cases(**inputs)
     elif name == "fetch_case":
-        return json.dumps(fetch_case(**inputs), indent=2)
+        return fetch_case(**inputs)
     else:
-        return json.dumps({"error": f"Unknown tool: {name}"})
+        return {"error": f"Unknown tool: {name}"}
+
+
+def _case_to_search_result(case: dict) -> dict | None:
+    """
+    Convert one corpus case dict into an Anthropic `search_result` content
+    block instead of a JSON blob. This is the API's documented shape for
+    feeding retrieved evidence into a RAG application: Claude can then anchor
+    citations to the specific passage a claim came from, rather than treating
+    the whole tool response as undifferentiated text.
+    """
+    if not isinstance(case, dict) or case.get("error"):
+        return None
+    text = case.get("text") or case.get("snippet") or ""
+    if not text:
+        return None
+    url = case.get("url") or ""
+    title = case.get("citation") or case.get("title") or url or "Case"
+    meta = " · ".join(b for b in (case.get("court"), case.get("year"), case.get("jurisdiction")) if b)
+    body = f"{meta}\n\n{text}" if meta else text
+    return {
+        "type": "search_result",
+        "source": url or title,
+        "title": title[:200],
+        "content": [{"type": "text", "text": body}],
+        "citations": {"enabled": True},
+    }
+
+
+def _tool_result_content(data) -> list[dict] | str:
+    """
+    Build the `content` value for a tool_result block from a corpus tool's
+    raw result. Cases with usable text become search_result blocks; if none
+    do (no results, or every case errored), fall back to a JSON string so
+    Claude still sees the error/empty-result signal.
+    """
+    cases = data if isinstance(data, list) else [data]
+    blocks = [b for c in cases if (b := _case_to_search_result(c)) is not None]
+    return blocks if blocks else json.dumps(data, indent=2)
+
+
+def _extract_case_urls(data) -> set[str]:
+    """Pull the set of case URLs actually returned by a tool call, for
+    cross-checking against the URLs Claude cites in its final answer."""
+    cases = data if isinstance(data, list) else [data]
+    return {c["url"] for c in cases if isinstance(c, dict) and c.get("url") and not c.get("error")}
+
+
+_MD_LINK_URL_RE = re.compile(r"\]\((https?://[^\s)]+)\)")
+
+
+def _find_unverified_urls(text: str, retrieved_urls: set[str]) -> list[str]:
+    """
+    Deterministic guard against invented citations: every case link in the
+    final answer must be a URL this request actually retrieved via a tool
+    call. Anything else — a fabricated URL, or one from the model's training
+    data rather than this search — is flagged. Cheap because the corpus is
+    local: no extra API call, just a set lookup against what we already
+    fetched this request.
+    """
+    cited = set(_MD_LINK_URL_RE.findall(text))
+    return sorted(cited - retrieved_urls)
 
 
 async def run_agent(situation: str, history: list[dict] | None = None, request_id: str = "-"):
@@ -240,6 +306,10 @@ async def run_agent(situation: str, history: list[dict] | None = None, request_i
 
     first = await _emit("status", message="Analysing your situation...")
     yield first
+
+    # URLs actually returned by search_cases/fetch_case/fetch_cases this
+    # request — the ground truth for the citation-verification check below.
+    retrieved_urls: set[str] = set()
 
     iteration = 0
     while True:
@@ -391,12 +461,13 @@ async def run_agent(situation: str, history: list[dict] | None = None, request_i
                 try:
                     if tool_name == "fetch_cases":
                         urls = tool_input.get("urls", [])[:5]
-                        cases = await fetch_cases_parallel(urls)
-                        result = json.dumps(cases, indent=2)
+                        data = await fetch_cases_parallel(urls)
                     else:
-                        result = await asyncio.get_event_loop().run_in_executor(
-                            None, partial(_run_tool_sync, tool_name, tool_input)
+                        data = await asyncio.get_event_loop().run_in_executor(
+                            None, partial(_run_tool_data, tool_name, tool_input)
                         )
+                    retrieved_urls |= _extract_case_urls(data)
+                    result = _tool_result_content(data)
                     tool_elapsed = time.monotonic() - tool_t0
                     logger.info("[%s] tool=%s elapsed=%.2fs", rid, tool_name, tool_elapsed)
                     if tool_elapsed > SLOW_QUERY_THRESHOLD_S:
@@ -421,15 +492,29 @@ async def run_agent(situation: str, history: list[dict] | None = None, request_i
             if truncated:
                 logger.warning("[%s] response truncated at max_tokens", rid)
                 yield await _emit("token", text="\n\n*…the response was cut short due to length.*")
+
+            final_text = "".join(b["text"] for b in assembled_content if b["type"] == "text")
+            unverified_urls = _find_unverified_urls(final_text, retrieved_urls)
+            if unverified_urls:
+                logger.warning(
+                    "[%s] response cites %d URL(s) not retrieved this request: %s",
+                    rid, len(unverified_urls), unverified_urls,
+                )
+
             disclaimer = (
                 "\n\n---\n\n"
                 "*This is legal information, not legal advice. "
                 "For advice specific to your circumstances, please consult a qualified NSW solicitor. "
                 "For free legal help, contact [Legal Aid NSW](https://www.legalaid.nsw.gov.au).*"
             )
+            if unverified_urls:
+                disclaimer += (
+                    "\n\n*⚠️ One or more case links above could not be verified against the sources "
+                    "retrieved for this search. Please confirm them independently before relying on them.*"
+                )
             yield await _emit("token", text=disclaimer)
             yield await _emit("done")
-            if is_cacheable and collected_chunks and not truncated:
+            if is_cacheable and collected_chunks and not truncated and not unverified_urls:
                 response_cache.put(situation, collected_chunks)
             return
 

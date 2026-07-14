@@ -36,6 +36,7 @@ const NAV_LINKS = [
   ["#engine", "Under the hood"],
   ["#features", "Capabilities"],
   ["#trust", "Why trust it"],
+  ["#grounding", "No invented cases"],
   ["#pricing", "Pricing"],
 ];
 
@@ -216,6 +217,46 @@ function Trust() {
         </Reveal>
         <Reveal className="sec-list" style={{ transitionDelay: "90ms" }}>
           {TRUST_ITEMS.map((s) => (
+            <div className="sec-item" key={s.t}>
+              <h4>{s.t}</h4>
+              <p>{s.d}</p>
+            </div>
+          ))}
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+const GROUNDING_ITEMS = [
+  { t: "It searches the record, not its memory", d: "Every answer is assembled from judgments pulled out of the local case-law index at the moment you ask — the model is not answering from what it recalls about the law." },
+  { t: "It reads the judgment before explaining it", d: "Before commenting on a case, the agent fetches the actual passages that matched your situation, plus the opening and orders — not just a title it can guess at." },
+  { t: "It can't cite what it didn't retrieve", d: "The agent is only allowed to present cases that came back from a search it ran this conversation. If nothing relevant turns up, it says so instead of reaching for a plausible-sounding citation." },
+  { t: "Nothing to take on faith", d: "Every case links to the published judgment it was drawn from, so you can check the source yourself in seconds." },
+];
+
+function Grounding() {
+  return (
+    <section className="section sec" id="grounding">
+      <div className="container sec-wrap">
+        <Reveal>
+          <span className="eyebrow">Grounded by design</span>
+          <h2 style={{ fontSize: "clamp(28px,3.6vw,42px)", lineHeight: 1.1, letterSpacing: "-0.02em", fontWeight: 600, marginTop: 16 }}>
+            Why it doesn't invent cases.
+          </h2>
+          <p style={{ color: "var(--muted)", marginTop: 16, fontSize: 18 }}>
+            Large language models can state a plausible-sounding case that never existed. Precedent Reasoning is built to make
+            that hard: the agent doesn't answer from what it was trained on — it searches a real, indexed set of published
+            judgments first, and can only talk about what it finds there. Retrieval reduces the risk; it doesn't remove it, which
+            is why every result is a link you can check for yourself, not a claim you have to trust.
+          </p>
+          <div className="sec-badges">
+            <span className="badge">Retrieval, not recall</span>
+            <span className="badge">Verify before you rely</span>
+          </div>
+        </Reveal>
+        <Reveal className="sec-list" style={{ transitionDelay: "90ms" }}>
+          {GROUNDING_ITEMS.map((s) => (
             <div className="sec-item" key={s.t}>
               <h4>{s.t}</h4>
               <p>{s.d}</p>

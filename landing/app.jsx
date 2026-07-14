@@ -63,6 +63,7 @@ function App() {
         <Pipeline />
         <Features />
         <Trust />
+        <Grounding />
         <Coverage />
         <Pricing />
         <CTA />
