@@ -12,6 +12,7 @@ import asyncio
 import logging
 import re
 import sqlite3
+import threading
 import time
 from pathlib import Path
 
@@ -46,6 +47,11 @@ _embedder: SentenceTransformer | None = None
 _reranker: CrossEncoder | None = None
 _table = None
 
+# Serialises model loading and GPU inference. The MPS backend gives no
+# guarantees under concurrent encode/predict calls from multiple threads,
+# and lazy loading without a lock could load a model twice.
+_gpu_lock = threading.RLock()  # re-entrant: inference sections also call the lazy getters
+
 # url -> (timestamp, sorted matched chunk_indices) — populated by search_cases(),
 # consulted by fetch_case() so it can return the matched passages instead of
 # always the document head. Short TTL: only needs to bridge a single agent turn
@@ -60,31 +66,46 @@ def _device() -> str:
 
 def _get_embedder() -> SentenceTransformer:
     global _embedder
-    if _embedder is None:
-        logger.info("Loading embedding model %s…", EMBED_MODEL)
-        _embedder = SentenceTransformer(
-            EMBED_MODEL,
-            trust_remote_code=True,
-            model_kwargs={"torch_dtype": torch.bfloat16},
-            device=_device(),
-        )
-    return _embedder
+    with _gpu_lock:
+        if _embedder is None:
+            logger.info("Loading embedding model %s…", EMBED_MODEL)
+            _embedder = SentenceTransformer(
+                EMBED_MODEL,
+                trust_remote_code=True,
+                model_kwargs={"torch_dtype": torch.bfloat16},
+                device=_device(),
+            )
+        return _embedder
 
 
 def _get_reranker() -> CrossEncoder:
     global _reranker
-    if _reranker is None:
-        logger.info("Loading reranker %s…", RERANK_MODEL)
-        # zerank-1-small is a Qwen3ForCausalLM (~4B params) despite the name —
-        # must load in bfloat16 (its native dtype) or it doubles to ~16GB+ in fp32
-        # and blows the GPU memory ceiling.
-        _reranker = CrossEncoder(
-            RERANK_MODEL,
-            trust_remote_code=True,
-            model_kwargs={"torch_dtype": torch.bfloat16},
-            device=_device(),
-        )
-    return _reranker
+    with _gpu_lock:
+        if _reranker is None:
+            logger.info("Loading reranker %s…", RERANK_MODEL)
+            # zerank-1-small is a Qwen3ForCausalLM (~4B params) despite the name —
+            # must load in bfloat16 (its native dtype) or it doubles to ~16GB+ in fp32
+            # and blows the GPU memory ceiling.
+            _reranker = CrossEncoder(
+                RERANK_MODEL,
+                trust_remote_code=True,
+                model_kwargs={"torch_dtype": torch.bfloat16},
+                device=_device(),
+            )
+        return _reranker
+
+
+def warm_up() -> None:
+    """
+    Load the LanceDB table, embedding model, and reranker ahead of the first
+    query. Called from a startup hook so the first user search doesn't stall
+    for the full model-load time.
+    """
+    t0 = time.monotonic()
+    _get_table()
+    _get_embedder()
+    _get_reranker()
+    logger.info("Corpus warm-up done in %.1fs", time.monotonic() - t0)
 
 
 def _get_table():
@@ -115,13 +136,14 @@ def search_cases(query: str, max_results: int = 5) -> list[dict]:
     embedder = _get_embedder()
 
     # Embed query with instruction prefix
-    query_vec = embedder.encode(
-        _QUERY_PREFIX + query,
-        normalize_embeddings=True,
-        convert_to_numpy=True,
-    )[:EMBED_DIM].astype("float32").tolist()
-    if torch.backends.mps.is_available():
-        torch.mps.empty_cache()
+    with _gpu_lock:
+        query_vec = embedder.encode(
+            _QUERY_PREFIX + query,
+            normalize_embeddings=True,
+            convert_to_numpy=True,
+        )[:EMBED_DIM].astype("float32").tolist()
+        if torch.backends.mps.is_available():
+            torch.mps.empty_cache()
 
     # Vector search — top 50 chunks
     vec_hits = (
@@ -159,10 +181,10 @@ def search_cases(query: str, max_results: int = 5) -> list[dict]:
     # every call retains a full autograd graph (28 transformer layers of
     # activations) that's never freed — blows past the GPU memory ceiling within
     # a single batch.
-    with torch.no_grad():
+    with _gpu_lock, torch.no_grad():
         scores = reranker.predict(pairs)
-    if torch.backends.mps.is_available():
-        torch.mps.empty_cache()
+        if torch.backends.mps.is_available():
+            torch.mps.empty_cache()
     for c, s in zip(candidates, scores):
         c["_score"] = float(s)
     candidates.sort(key=lambda c: c["_score"], reverse=True)
@@ -183,6 +205,12 @@ def search_cases(query: str, max_results: int = 5) -> list[dict]:
             case_chunks[case_id].append(chunk)
 
     now = time.monotonic()
+    # Prune expired entries — they are otherwise only skipped on read, never
+    # removed, so the cache would grow for the life of the process.
+    for cached_url in [u for u, (ts, _) in _matched_chunks_cache.items()
+                       if now - ts > _MATCHED_CHUNKS_TTL]:
+        del _matched_chunks_cache[cached_url]
+
     results = []
     for case_id in case_order:
         chunks = case_chunks[case_id]
@@ -256,7 +284,7 @@ def _assemble_case_text(case_id: str, url: str, fallback_text: str | None) -> st
         table = _get_table()
         rows = (
             table.search()
-            .where(f"case_id = '{case_id}'")
+            .where("case_id = '{}'".format(case_id.replace("'", "''")))
             .select(["chunk_index", "text"])
             .to_list()
         )

@@ -101,13 +101,17 @@ export default function Home() {
       drainingRef.current = false;
       return;
     }
-    const char = tokenQueue.current.shift()!;
+    // Adaptive batch: at least 3 chars per tick (~375 chars/sec baseline,
+    // faster than the model streams), scaling up when the queue backlogs so
+    // rendering never lags far behind generation.
+    const batch = Math.max(3, Math.ceil(tokenQueue.current.length / 40));
+    const text = tokenQueue.current.splice(0, batch).join("");
     const target = drainTargetRef.current;
     if (target) {
       updateConversation(target.convId, (c) => ({
         ...c,
         turns: c.turns.map((t, i) =>
-          i === target.turnIndex ? { ...t, response: t.response + char } : t
+          i === target.turnIndex ? { ...t, response: t.response + text } : t
         ),
       }));
     }
@@ -115,7 +119,7 @@ export default function Home() {
     if (!userScrolledUpRef.current) {
       bottomRef.current?.scrollIntoView({ behavior: "instant" });
     }
-    setTimeout(drainNext, 8); // ~125 chars/sec — smooth but fast
+    setTimeout(drainNext, 8);
   }
 
   // Load from localStorage on mount
@@ -290,15 +294,25 @@ export default function Home() {
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
+      // Carry partial lines across reads — one SSE event can straddle two
+      // network chunks, and parsing a half-received JSON line would throw.
+      let sseBuffer = "";
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split("\n")) {
+        sseBuffer += decoder.decode(value, { stream: true });
+        const lines = sseBuffer.split("\n");
+        sseBuffer = lines.pop() ?? "";
+        for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
-          const event: SSEEvent = JSON.parse(line.slice(6));
+          let event: SSEEvent;
+          try {
+            event = JSON.parse(line.slice(6));
+          } catch {
+            continue; // skip malformed event rather than failing the turn
+          }
 
           if (event.type === "status") {
             updateConversation(convId!, (c) => ({

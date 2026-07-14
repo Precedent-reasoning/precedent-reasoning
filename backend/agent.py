@@ -1,8 +1,9 @@
 """
-Claude agent loop for NSW legal case search.
+Claude agent loop for NSW and Commonwealth legal case search.
 
 The agent receives a natural-language legal situation, formulates search queries,
-fetches relevant NSW cases from AustLII, and explains their relevance.
+retrieves relevant cases from the local hybrid index (LanceDB + SQLite), and
+explains their relevance.
 
 Uses Claude tool_use with streaming so the frontend can show live progress.
 """
@@ -23,6 +24,11 @@ logger = logging.getLogger(__name__)
 
 client = anthropic.AsyncAnthropic()
 MODEL = "claude-sonnet-4-6"
+
+# Hard cap on Claude API calls per request. At MAX_TOOL_ITERATIONS the agent's
+# tool calls are answered with a "wrap up now" error instead of being executed;
+# one further call is allowed for the final answer.
+MAX_TOOL_ITERATIONS = 10
 
 SYSTEM_PROMPT = """You are a legal research assistant helping NSW (New South Wales) residents find relevant Australian case law.
 
@@ -53,7 +59,7 @@ Your entire response must consist of exactly two parts and nothing else:
 **Part 2:** Up to 5 case blocks. Each block must use this structure exactly:
 
 ### 🏛️ [Case Name and Citation] — [Court Name]
-[Case Name and Citation as a markdown hyperlink to the AustLII URL]
+[Case Name and Citation as a markdown hyperlink to the case's source URL]
 
 **Court & Year:** [Court name], [Year] · **Binding status:** [Binding on all Australian courts / Binding on NSW courts / Persuasive in NSW courts] — [one sentence explaining why]
 
@@ -88,14 +94,11 @@ When presenting each case, always state:
 ## Important constraints
 
 - Do not mention internal implementation details in your responses — never use words like "simultaneously", "in parallel", or "concurrently" when describing how you search or fetch cases.
-- All cases come from NSW Caselaw (caselaw.nsw.gov.au). Only surface cases you have actually retrieved and read — never invent citations or URLs.
-- Only surface cases you have actually retrieved and read — never invent citations.
-- Clearly label your output as legal information, not legal advice. See the banned patterns listed above — enforce them strictly.
+- Cases come from a local index of NSW and Commonwealth case law. Only surface cases you have actually retrieved and read via the tools — never invent citations or URLs.
+- Provide legal information only, never legal advice: no conclusions about the user's likely outcome, no recommendations on what they should do, no predictions about how a court would decide their matter.
 - If a case appears overruled or distinguished by later cases, note that.
 - **Present at most 5 cases** in your final response — pick the most relevant ones.
-- **Use `fetch_cases` (not `fetch_case`) whenever you want to read multiple cases** — it fetches them all in parallel and is much faster. Only use `fetch_case` for a single URL.
-- Only surface cases you have actually retrieved and read — never invent citations or URLs.
-- Use `search_cases` (not `search_nsw_cases`) — this tool covers both NSW and federal courts.
+- **Use `fetch_cases` (not `fetch_case`) whenever you want to read multiple cases** — it fetches them all at once and is much faster. Only use `fetch_case` for a single URL.
 """
 
 TOOLS = [
@@ -152,7 +155,7 @@ TOOLS = [
                 "urls": {
                     "type": "array",
                     "items": {"type": "string"},
-                    "description": "List of AustLII case URLs to fetch (max 5)",
+                    "description": "List of case URLs to fetch (max 5), from search_cases results",
                     "maxItems": 5
                 }
             },
@@ -160,6 +163,27 @@ TOOLS = [
         }
     }
 ]
+
+
+def _set_cache_breakpoint(messages: list[dict]) -> None:
+    """
+    Move the prompt-cache breakpoint to the last content block of the last
+    message, so each agent iteration reuses the previous iteration's prefix
+    (system + tools + all earlier turns) instead of re-processing it at full
+    price. Only one message-level breakpoint is kept (the API allows 4 total;
+    one is spent on the system prompt).
+    """
+    for m in messages:
+        content = m.get("content")
+        if isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict):
+                    block.pop("cache_control", None)
+    last_content = messages[-1].get("content")
+    if isinstance(last_content, list) and last_content:
+        last_block = last_content[-1]
+        if isinstance(last_block, dict):
+            last_block["cache_control"] = {"type": "ephemeral"}
 
 
 def _run_tool_sync(name: str, inputs: dict) -> str:
@@ -220,19 +244,30 @@ async def run_agent(situation: str, history: list[dict] | None = None, request_i
     iteration = 0
     while True:
         iteration += 1
+        if iteration > MAX_TOOL_ITERATIONS + 1:
+            logger.error("[%s] aborting: exceeded %d iterations", rid, MAX_TOOL_ITERATIONS + 1)
+            yield _sse("error", message="The search took too many steps. Please try rephrasing your question.")
+            return
+
         # Track tool calls being assembled from streaming deltas
         pending_tool_id: str | None = None
         pending_tool_name: str | None = None
         pending_tool_input: str = ""
         assembled_content: list = []
 
+        _set_cache_breakpoint(messages)
         claude_t0 = time.monotonic()
         logger.info("[%s] Claude API call #%d started", rid, iteration)
         try:
             async with client.messages.stream(
                 model=MODEL,
-                max_tokens=4096,
-                system=SYSTEM_PROMPT,
+                max_tokens=8192,
+                system=[{
+                    "type": "text",
+                    "text": SYSTEM_PROMPT,
+                    # caches tools + system together (tools render first)
+                    "cache_control": {"type": "ephemeral"},
+                }],
                 tools=TOOLS,
                 messages=messages,
             ) as stream:
@@ -292,9 +327,11 @@ async def run_agent(situation: str, history: list[dict] | None = None, request_i
         claude_elapsed = time.monotonic() - claude_t0
         usage = getattr(final_message, "usage", None)
         logger.info(
-            "[%s] Claude API call #%d done elapsed=%.2fs stop=%s tokens_in=%s tokens_out=%s",
+            "[%s] Claude API call #%d done elapsed=%.2fs stop=%s tokens_in=%s tokens_out=%s cache_read=%s cache_write=%s",
             rid, iteration, claude_elapsed, final_message.stop_reason,
             getattr(usage, "input_tokens", "?"), getattr(usage, "output_tokens", "?"),
+            getattr(usage, "cache_read_input_tokens", "?"),
+            getattr(usage, "cache_creation_input_tokens", "?"),
         )
         if claude_elapsed > SLOW_QUERY_THRESHOLD_S:
             logger.warning("[%s] Slow Claude API call #%d: %.2fs", rid, iteration, claude_elapsed)
@@ -302,6 +339,25 @@ async def run_agent(situation: str, history: list[dict] | None = None, request_i
         messages.append({"role": "assistant", "content": assembled_content})
 
         if final_message.stop_reason == "tool_use":
+            if iteration >= MAX_TOOL_ITERATIONS:
+                # Budget exhausted — refuse the tool calls and ask for a final answer.
+                logger.warning("[%s] tool budget exhausted at iteration %d", rid, iteration)
+                tool_results = [
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": block["id"],
+                        "content": json.dumps({
+                            "error": "Search limit reached. Present your findings now "
+                                     "using only the cases you have already retrieved. "
+                                     "Do not call any more tools."
+                        }),
+                    }
+                    for block in assembled_content
+                    if block["type"] == "tool_use"
+                ]
+                messages.append({"role": "user", "content": tool_results})
+                continue
+
             tool_results = []
             for block in assembled_content:
                 if block["type"] != "tool_use":
@@ -347,7 +403,11 @@ async def run_agent(situation: str, history: list[dict] | None = None, request_i
 
             messages.append({"role": "user", "content": tool_results})
 
-        elif final_message.stop_reason == "end_turn":
+        elif final_message.stop_reason in ("end_turn", "max_tokens"):
+            truncated = final_message.stop_reason == "max_tokens"
+            if truncated:
+                logger.warning("[%s] response truncated at max_tokens", rid)
+                yield await _emit("token", text="\n\n*…the response was cut short due to length.*")
             disclaimer = (
                 "\n\n---\n\n"
                 "*This is legal information, not legal advice. "
@@ -356,7 +416,7 @@ async def run_agent(situation: str, history: list[dict] | None = None, request_i
             )
             yield await _emit("token", text=disclaimer)
             yield await _emit("done")
-            if is_cacheable and collected_chunks:
+            if is_cacheable and collected_chunks and not truncated:
                 response_cache.put(situation, collected_chunks)
             return
 

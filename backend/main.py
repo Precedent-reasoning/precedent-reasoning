@@ -9,6 +9,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 load_dotenv(Path(__file__).parent / ".env", override=True)
 
+import asyncio
 import logging
 import os
 import time
@@ -30,7 +31,20 @@ logger = logging.getLogger(__name__)
 
 _anthropic = anthropic.Anthropic()
 
-limiter = Limiter(key_func=get_remote_address)
+def _client_ip(request: Request) -> str:
+    """
+    Rate-limit key. Behind a reverse proxy every client shares the socket IP,
+    so honour X-Forwarded-For — but only when TRUST_PROXY_HEADERS is set,
+    since the header is spoofable when clients connect directly.
+    """
+    if os.environ.get("TRUST_PROXY_HEADERS", "").lower() in ("1", "true", "yes"):
+        forwarded = request.headers.get("X-Forwarded-For")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+
+limiter = Limiter(key_func=_client_ip)
 app = FastAPI(title="Precedent Reasoning")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -44,6 +58,24 @@ app.add_middleware(
     allow_methods=["POST", "OPTIONS", "GET"],
     allow_headers=["Content-Type"],
 )
+
+
+@app.on_event("startup")
+async def _warm_models():
+    """Load the search index + models in the background so the first user
+    query doesn't stall for the full model-load time. The server starts
+    serving immediately; a search that arrives mid-load simply waits on the
+    model lock."""
+    from tools.corpus import warm_up
+
+    def _run():
+        try:
+            warm_up()
+        except Exception:
+            # e.g. index not built yet — searches will surface the real error
+            logger.exception("Model warm-up failed")
+
+    asyncio.get_event_loop().run_in_executor(None, _run)
 
 
 class HistoryTurn(BaseModel):
@@ -97,9 +129,20 @@ async def search(body: SearchRequest, request: Request):
 class TitleRequest(BaseModel):
     situation: str
 
+    @field_validator("situation")
+    @classmethod
+    def situation_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("situation cannot be empty")
+        if len(v) > 2000:
+            raise ValueError("situation must be under 2000 characters")
+        return v
+
 
 @app.post("/title")
-async def generate_title(request: TitleRequest):
+@limiter.limit("10/minute")
+async def generate_title(body: TitleRequest, request: Request):
     import asyncio
     from functools import partial
 
@@ -116,7 +159,7 @@ async def generate_title(request: TitleRequest):
                     "role": "user",
                     "content": (
                         f"Give a short 3-6 word title summarising this legal situation. "
-                        f"Return ONLY the title, no punctuation, no quotes.\n\n{request.situation}"
+                        f"Return ONLY the title, no punctuation, no quotes.\n\n{body.situation}"
                     ),
                 }],
             )

@@ -45,8 +45,8 @@ SIMILARITY_THRESHOLD: float = float(os.environ.get("RESPONSE_CACHE_SIMILARITY", 
 # ---------------------------------------------------------------------------
 # Internal storage: OrderedDict used as an LRU queue
 # ---------------------------------------------------------------------------
-# Each value: (timestamp, normalised_text, tf_vector, event_chunks)
-_cache: OrderedDict[str, tuple[float, str, dict[str, float], list[str]]] = OrderedDict()
+# Each value: (timestamp, normalised_text, tf_vector, numbers, event_chunks)
+_cache: OrderedDict[str, tuple[float, str, dict[str, float], Counter, list[str]]] = OrderedDict()
 
 # ---------------------------------------------------------------------------
 # Text normalisation & TF-IDF helpers
@@ -65,6 +65,16 @@ def _tokenise(text: str) -> list[str]:
         w for w in re.findall(r"[a-z]+", text.lower())
         if w not in _STOP_WORDS and len(w) > 1
     ]
+
+
+def _numbers(text: str) -> Counter:
+    """
+    Multiset of numeric tokens. Numbers carry outsized legal weight relative
+    to their share of the text ("dismissed after 5 months" vs "7 months"
+    straddles the 6-month minimum employment period), so a cached response is
+    only reused when the numbers match exactly.
+    """
+    return Counter(re.findall(r"\d+(?:\.\d+)?", text))
 
 
 def _tf(tokens: list[str]) -> dict[str, float]:
@@ -103,13 +113,17 @@ def get(situation: str) -> list[str] | None:
     """
     now = time.monotonic()
     query_tf = _tf(_tokenise(situation))
+    query_numbers = _numbers(situation)
 
     best_key: str | None = None
     best_sim: float = 0.0
 
-    for key, (ts, _norm, cached_tf, _chunks) in list(_cache.items()):
+    for key, (ts, _norm, cached_tf, cached_numbers, _chunks) in list(_cache.items()):
         if now - ts > TTL_S:
             del _cache[key]
+            continue
+        if cached_numbers != query_numbers:
+            # Numeric details differ — legally distinct even if the words match.
             continue
         sim = _cosine(query_tf, cached_tf)
         if sim > best_sim:
@@ -123,7 +137,7 @@ def get(situation: str) -> list[str] | None:
         logger.info(
             "response cache HIT similarity=%.3f key=%r", best_sim, best_key[:60]
         )
-        return entry[3]  # event_chunks
+        return entry[4]  # event_chunks
 
     logger.debug("response cache MISS best_similarity=%.3f", best_sim)
     return None
@@ -138,7 +152,7 @@ def put(situation: str, chunks: list[str]) -> None:
         return
     key = _make_key(situation)
     tf = _tf(_tokenise(situation))
-    _cache[key] = (time.monotonic(), key, tf, chunks)
+    _cache[key] = (time.monotonic(), key, tf, _numbers(situation), chunks)
     _cache.move_to_end(key)
     while len(_cache) > MAX_ENTRIES:
         evicted = next(iter(_cache))

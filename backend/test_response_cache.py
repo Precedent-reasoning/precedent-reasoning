@@ -32,8 +32,8 @@ def test_semantic_similarity():
 
     response_cache.put(q1, chunks)
 
-    # Paraphrase with same keywords in different order
-    q2 = "Bond refusal landlord my return is"
+    # Paraphrase reusing the same keywords in a different order/phrasing
+    q2 = "Landlord refusing return of my bond"
     result = response_cache.get(q2)
     assert result == chunks, f"Paraphrase should hit cache"
     print("✓ Semantic similarity (word reuse) hits cache")
@@ -41,8 +41,24 @@ def test_semantic_similarity():
     # Different topic should miss
     q3 = "I need help with my visa application"
     result = response_cache.get(q3)
-    # May or may not hit depending on threshold, but let's verify it's treated differently
+    assert result is None, "Different topic should miss cache"
+    print("✓ Different topic misses cache")
     response_cache.invalidate(q1)  # Clear for next test
+
+
+def test_numeric_mismatch():
+    """Same wording but different numbers must NOT hit the cache —
+    numeric details are legally significant (e.g. the 6-month minimum
+    employment period for unfair dismissal)."""
+    q1 = "I was dismissed after 5 months of employment"
+    chunks = ["data: five-month answer\n\n"]
+    response_cache.put(q1, chunks)
+
+    assert response_cache.get("I was dismissed after 7 months of employment") is None, \
+        "Different number should miss cache"
+    assert response_cache.get("I was dismissed after 5 months of employment") == chunks
+    print("✓ Numeric mismatch misses cache; matching numbers hit")
+    response_cache.invalidate(q1)
 
 
 def test_cache_stats():
@@ -92,6 +108,7 @@ if __name__ == "__main__":
     print("Running response_cache tests...\n")
     test_identical_query()
     test_semantic_similarity()
+    test_numeric_mismatch()
     test_cache_stats()
     test_lru_eviction()
     print("\n✓ All tests passed!")
