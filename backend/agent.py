@@ -323,6 +323,19 @@ async def run_agent(situation: str, history: list[dict] | None = None, request_i
                 msg = "The AI service returned an error. Please try again."
             yield _sse("error", message=msg)
             return  # do not cache error responses
+        except Exception as e:
+            # e.g. the SDK raises TypeError when no API key is configured.
+            # Without this, the exception kills the generator mid-stream and
+            # the browser just sees "Failed to fetch".
+            elapsed = time.monotonic() - claude_t0
+            logger.error("[%s] Claude call failed after %.2fs: %s", rid, elapsed, e, exc_info=True)
+            if "auth" in str(e).lower() or "api_key" in str(e).lower():
+                msg = ("The server is not configured with an Anthropic API key. "
+                       "Set ANTHROPIC_API_KEY in backend/.env and restart the backend.")
+            else:
+                msg = "An unexpected server error occurred. Please try again."
+            yield _sse("error", message=msg)
+            return  # do not cache error responses
 
         claude_elapsed = time.monotonic() - claude_t0
         usage = getattr(final_message, "usage", None)
