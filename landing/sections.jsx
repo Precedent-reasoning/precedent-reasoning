@@ -36,7 +36,7 @@ const NAV_LINKS = [
   ["#engine", "Under the hood"],
   ["#features", "Capabilities"],
   ["#trust", "Why trust it"],
-  ["#grounding", "No invented cases"],
+  ["#grounding", "Grounded by Design"],
   ["#pricing", "Pricing"],
 ];
 
@@ -242,7 +242,7 @@ function Grounding() {
         <Reveal>
           <span className="eyebrow">Grounded by design</span>
           <h2 style={{ fontSize: "clamp(28px,3.6vw,42px)", lineHeight: 1.1, letterSpacing: "-0.02em", fontWeight: 600, marginTop: 16 }}>
-            Why it doesn't invent cases.
+            How the system grounds models.
           </h2>
           <p style={{ color: "var(--muted)", marginTop: 16, fontSize: 18 }}>
             Large language models can state a plausible-sounding case that never existed. Precedent Reasoning is built to make
