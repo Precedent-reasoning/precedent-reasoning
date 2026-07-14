@@ -3,12 +3,10 @@ const { useState: uS, useRef: uR, useEffect: uE, useCallback: uC } = React;
 
 const SOURCE_URL = "#";
 
-const FULL_STEPS = (results, mode) => [
-  mode === "local" ? "Analysing your situation on-device…" : "Analysing your situation…",
+const FULL_STEPS = (results) => [
+  "Analysing your situation…",
   "Identifying the key legal issues…",
-  mode === "local"
-    ? "Searching your local case-law index with open models…"
-    : "Searching the case law for NSW and Commonwealth decisions…",
+  "Searching the case law for NSW and Commonwealth decisions…",
   "Reading " + results[0].case + " " + results[0].cite + "…",
   "Reading " + results[1].case + " " + results[1].cite + "…",
   "Comparing the cases to your situation…",
@@ -33,65 +31,17 @@ function BindingTag({ binding }) {
   return <span className={"tag " + (b.strong ? "win" : "loss")}>{b.strong ? "▲" : "◆"} {b.label}</span>;
 }
 
-// ---------------- Cloud / Local mode ----------------
-function LockIcon({ s = 14 }) {
-  return (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" stroke="currentColor" strokeWidth="2" />
-      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" stroke="currentColor" strokeWidth="2" />
-      <circle cx="12" cy="15.2" r="1.4" fill="currentColor" />
-    </svg>
-  );
-}
-function CloudIcon({ s = 14 }) {
-  return (
-    <svg width={s} height={s} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M7.5 18h9a3.8 3.8 0 0 0 .4-7.58A5.6 5.6 0 0 0 6.2 9.7 3.4 3.4 0 0 0 7.5 18z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function ModeToggle({ mode, onMode }) {
-  return (
-    <div className="mode-toggle" role="tablist" aria-label="Where it runs">
-      <button className={"mode-opt" + (mode === "cloud" ? " on" : "")} role="tab" aria-selected={mode === "cloud"} onClick={() => onMode("cloud")}>
-        <CloudIcon s={13} /> Cloud
-      </button>
-      <button className={"mode-opt" + (mode === "local" ? " on local" : "")} role="tab" aria-selected={mode === "local"} onClick={() => onMode("local")}>
-        <LockIcon s={13} /> Local
-      </button>
-    </div>
-  );
-}
-
-function ModeBar({ mode }) {
-  if (mode === "local") {
-    return (
-      <div className="mode-bar local">
-        <LockIcon s={14} />
-        <span><b>Local · data stays on this device.</b> Running on open models — nothing you type leaves your machine.</span>
-      </div>
-    );
-  }
-  return (
-    <div className="mode-bar cloud">
-      <CloudIcon s={14} />
-      <span>Cloud · processed on our managed service, encrypted in transit. Switch to <b>Local</b> to keep everything on-device.</span>
-    </div>
-  );
-}
-
 // ---------------- Demo banner ----------------
 function DemoBanner() {
   return (
     <div className="demo-banner">
-      <span><b>You're viewing a demo.</b> Conversations and results are simulated for illustrative purposes only.</span>
+      <span><b>You're viewing a demo.</b> Conversations and results are simulated for illustrative purposes only. To request a demo with real search results, please contact us.</span>
     </div>
   );
 }
 
 // ---------------- Sidebar ----------------
-function Sidebar({ convos, activeId, onSelect, onNew, onDelete, open, onClose, mode, onMode }) {
+function Sidebar({ convos, activeId, onSelect, onNew, onDelete, open, onClose }) {
   const [q, setQ] = uS("");
   const list = convos.filter((c) => c.title.toLowerCase().includes(q.toLowerCase()));
   return (
@@ -103,11 +53,6 @@ function Sidebar({ convos, activeId, onSelect, onNew, onDelete, open, onClose, m
           </a>
         </div>
         <span className="demo-pill">Demo</span>
-      </div>
-      <div className="side-block">
-        <div className="mode-label">Where it runs</div>
-        <ModeToggle mode={mode} onMode={onMode} />
-        <div className="mode-note">{mode === "local" ? "On your machine · offline-capable" : "Managed cloud · fastest results"}</div>
       </div>
       <div className="side-block">
         <button className="new-btn" onClick={() => { onNew(); onClose(); }}>
@@ -136,12 +81,11 @@ function Sidebar({ convos, activeId, onSelect, onNew, onDelete, open, onClose, m
 }
 
 // ---------------- Agent status ----------------
-function AgentStatus({ steps, issues, mode }) {
+function AgentStatus({ steps, issues }) {
   return (
     <div className="agent">
       <div className="agent-h">
         <span>Agent working…</span>
-        {mode === "local" && <span className="agent-mode"><LockIcon s={11} /> On-device</span>}
       </div>
       <div className="rp-demo-note">
         <b>Demo.</b> This search and the steps below are simulated for this walkthrough, not real output from Precedent Reasoning's case-law search.
@@ -249,7 +193,6 @@ function App({ theme, setTweak }) {
   const [activeId, setActiveId] = uS(null);
   const [input, setInput] = uS("");
   const [open, setOpen] = uS(false);
-  const [mode, setMode] = uS(() => { try { return localStorage.getItem("lcf-mode") || "cloud"; } catch (e) { return "cloud"; } });
   const timers = uR([]);
   const chatRef = uR(null);
   const bottomRef = uR(null);
@@ -261,8 +204,6 @@ function App({ theme, setTweak }) {
 
   const update = uC((id, fn) => setConvos((prev) => prev.map((c) => (c.id === id ? fn(c) : c))), []);
   const clearTimers = () => { timers.current.forEach(clearTimeout); timers.current = []; };
-
-  uE(() => { try { localStorage.setItem("lcf-mode", mode); } catch (e) {} }, [mode]);
 
   uE(() => {
     if (!stuckRef.current) bottomRef.current?.scrollIntoView({ block: "end" });
@@ -290,10 +231,10 @@ function App({ theme, setTweak }) {
     const match = matchScenario(t);
     const results = match.results;
     const issues = match.issues;
-    const steps = FULL_STEPS(results, mode);
+    const steps = FULL_STEPS(results);
     const id = uid();
 
-    const convo = { id, title: titleFor(t, match), situation: t, issues: [], results: [], steps: [steps[0]], state: "searching", mode };
+    const convo = { id, title: titleFor(t, match), situation: t, issues: [], results: [], steps: [steps[0]], state: "searching" };
     setConvos((prev) => [convo, ...prev]);
     setActiveId(id);
 
@@ -317,7 +258,7 @@ function App({ theme, setTweak }) {
       <DemoBanner />
       <div className="app">
         <div className={"scrim" + (open ? " show" : "")} onClick={() => setOpen(false)} />
-        <Sidebar convos={convos} activeId={activeId} onSelect={handleSelect} onNew={handleNew} onDelete={handleDelete} open={open} onClose={() => setOpen(false)} mode={mode} onMode={setMode} />
+        <Sidebar convos={convos} activeId={activeId} onSelect={handleSelect} onNew={handleNew} onDelete={handleDelete} open={open} onClose={() => setOpen(false)} />
         <div className="main">
           <div className="topbar">
             <button className="burger" aria-label="Menu" onClick={() => setOpen(true)}>
@@ -332,7 +273,7 @@ function App({ theme, setTweak }) {
               {active && (
                 <div className="turn">
                   <div className="user-row"><div className="user-bub">{active.situation}</div></div>
-                  {active.state === "searching" && <AgentStatus steps={active.steps} issues={active.issues} mode={active.mode || mode} />}
+                  {active.state === "searching" && <AgentStatus steps={active.steps} issues={active.issues} />}
                   {active.results.length > 0 && <ResultsPanel results={active.results} />}
                 </div>
               )}
@@ -342,7 +283,6 @@ function App({ theme, setTweak }) {
 
           <div className="composer">
             <div className="composer-inner">
-              <ModeBar mode={mode} />
               <div className="field">
                 <textarea ref={taRef} rows={1} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKey}
                   disabled={!!searching} maxLength={2000}

@@ -272,8 +272,8 @@ function Coverage() {
 
 const TIERS = [
   { name: "Free", price: "Free", unit: "forever", badge: "Apache-2.0 licensed", desc: "Run the full stack yourself — your infrastructure, your data, your resources.",
-    feats: ["Full source code (Apache-2.0)", "Self-host on your own devices or servers", "No hosting or infrastructure from us", "No support or maintenance included"],
-    cta: "View source on GitHub", href: GITHUB_URL, external: true, primary: false, flag: "Self-hosted", flagAlt: true },
+    feats: ["Full source code (Apache-2.0)", "Self-host on your own devices or servers", "No hosting or infrastructure from us", "No support or maintenance from us"],
+    cta: "View source on GitHub", icon: "github", href: GITHUB_URL, external: true, primary: false, flag: "Self-hosted", flagAlt: true },
   { name: "Get in Touch", price: "Get In Touch", unit: "", badge: "Cloud & custom deployments", desc: "Our hosted cloud service, tailored and customised to your organisation's needs.",
     feats: ["Fully managed cloud service", "Custom integrations & workflows", "Onboarding & support", "Tailored to your requirements"],
     cta: "Contact us", disabled: true, primary: true, flag: "Recommended" },
@@ -310,7 +310,7 @@ function Pricing() {
                   className={"btn " + (t.primary ? "btn-primary" : "btn-ghost")}
                   href={t.href || APP_URL}
                   {...(t.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                >{t.cta}</a>
+                >{t.icon === "github" && <GitHubGlyph s={16} />}{t.cta}</a>
               )}
             </Reveal>
           ))}
@@ -338,9 +338,9 @@ function CTA() {
 }
 
 const FOOT = [
-  { h: "Product", links: [["How it works", "#how"], ["Under the hood", "#engine"], ["Capabilities", "#features"], ["Coverage", "#coverage"], ["Pricing", "#pricing"], ["Source code", GITHUB_URL]] },
+  { h: "Product", links: [["How it works", "#how"], ["Under the hood", "#engine"], ["Capabilities", "#features"], ["Coverage", "#coverage"], ["Pricing", "#pricing"]] },
   { h: "Company", links: [["About", "#"], ["Careers", "#"], ["Contact", "#"]] },
-  { h: "Legal", links: [["Terms", "#"], ["Privacy", "#"], ["Disclaimer", "#"], ["License (Apache-2.0)", GITHUB_URL + "/blob/main/LICENSE"]] },
+  { h: "Legal", links: [["Terms", "#"], ["Privacy", "#"], ["License (Apache-2.0)", GITHUB_URL + "/blob/main/LICENSE"]] },
 ];
 
 function Footer() {
@@ -360,8 +360,8 @@ function Footer() {
           ))}
         </div>
         <p className="foot-disc">
-          Precedent Reasoning provides legal information — what courts have decided and the principles that apply —
-          for general educational purposes only. It is not a law firm, does not provide legal advice, and use of the
+          <b>Disclaimer:</b> Precedent Reasoning provides legal information — what courts have decided and the principles that apply —
+          for general research and educational purposes only. It is not a law firm, does not provide legal advice, and use of the
           service does not create a solicitor–client relationship. AI can make mistakes; always verify citations
           against the original judgment. Case names and results shown on this page are illustrative.
         </p>

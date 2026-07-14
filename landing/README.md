@@ -26,13 +26,6 @@ transparency · **Cloud vs Local** deployment comparison · Pricing (Local /
 Cloud-Basic / Cloud-Professional, with a "Why upgrade to Cloud-Professional" band)
 · CTA · Footer.
 
-## Cloud / Local mode (app screen)
-
-The app has a **Where it runs** toggle (Cloud / Local), persisted to localStorage.
-In **Local** mode it shows a "data stays on this device" indicator and the agent
-steps switch to on-device wording. This is UI only — wire it to your real
-cloud vs. local-model/agent backends in `app-screen.jsx`'s `run()`.
-
 ## Run locally
 
 These reference each other with relative paths, so serve the folder (don't open via `file://`):

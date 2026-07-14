@@ -27,8 +27,9 @@ jobs:
         run: |
           set -e
           cd pages
-          # Remove everything except .git, then repopulate from landing/
-          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          # Remove everything except .git and README.md (README is maintained
+          # directly in this repo, not synced from landing/), then repopulate from landing/
+          find . -mindepth 1 -maxdepth 1 ! -name .git ! -name README.md -exec rm -rf {} +
           for f in ../source/landing/*; do
             base=$(basename "$f")
             [ "$base" = "README.md" ] && continue

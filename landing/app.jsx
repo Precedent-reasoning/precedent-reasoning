@@ -1,6 +1,12 @@
 // app.jsx — root: composes sections + theme tweaks
 const { useEffect: useEffectA } = React;
 
+// The browser's own scroll restoration fires before this client-rendered page
+// has laid out its content, so it always lands at 0 — restore it ourselves
+// once mounted, and stop the browser from fighting our restore.
+const SCROLL_KEY = "lp-scroll-y";
+if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+
 const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
   "theme": "navy"
 }/*EDITMODE-END*/;
@@ -33,6 +39,20 @@ function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
 
   useEffectA(() => { applyTheme(t.theme); }, [t.theme]);
+
+  useEffectA(() => {
+    if (window.location.hash) {
+      document.getElementById(window.location.hash.slice(1))
+        ?.scrollIntoView({ block: "start", behavior: "instant" });
+    } else {
+      const saved = sessionStorage.getItem(SCROLL_KEY);
+      if (saved) window.scrollTo({ top: parseInt(saved, 10), behavior: "instant" });
+    }
+
+    const onScroll = () => sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <React.Fragment>
