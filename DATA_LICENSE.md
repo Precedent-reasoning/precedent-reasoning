@@ -6,9 +6,10 @@ different terms. This document exists to give proper attribution and to
 summarise the obligations that travel with that data — including for anyone
 who self-hosts this project and builds their own index from the same source.
 
-**This is not legal advice.** If you're planning a commercial or
-public-facing deployment, have the specifics reviewed by counsel — see the
-flagged item below in particular.
+**This is not legal advice.** The summaries below reflect a direct reading of
+each source's current published terms, but policies can change and this
+isn't a substitute for counsel if you're planning a commercial or
+public-facing deployment.
 
 ## The corpus
 
@@ -27,33 +28,27 @@ for the purposes of the CC BY 4.0 license.
 
 ## The underlying judgments
 
-The corpus's own per-source license file (`LICENCE.md` in the [dataset
-repository](https://huggingface.co/datasets/isaacus/open-australian-legal-corpus))
-records that its creator obtained explicit permission from each source to
-compile this data. The terms below are summarised from each court's own
-copyright policy — anyone reproducing judgment text (verbatim or in large
-excerpts) should read the primary source rather than rely solely on this
-summary, since these policies can change.
+The table below is quoted/summarised directly from each court's own current
+policy page (fetched and verified against the live page text as of July
+2026), not from the corpus's own compiled summary — an earlier draft of this
+document relied on the corpus's `LICENCE.md` for the High Court row, which
+turned out to describe more restrictive terms than the court's actual
+current page states; that's been corrected below. Anyone reproducing
+judgment text (verbatim or in large excerpts) should still check the primary
+source before relying on this table, since these policies can change.
 
 | Source | Reproduction terms | Reference |
 |---|---|---|
-| NSW Caselaw | Reproduction/publication of decisions is authorised provided it is accurate and in proper context, does not indicate (directly or indirectly) that it is an official version, remains consistent with the current official version, complies with any non-publication/suppression order, and does not reproduce editorial material (e.g. headnotes) without further authority. | [caselaw.nsw.gov.au/policy.html](https://www.caselaw.nsw.gov.au/policy.html) |
-| Federal Court of Australia | Judgments and decisions (or excerpts) may be reproduced or published — **including commercially** — in unaltered form, provided it is acknowledged as a judgment/decision of the Court, and any added commentary is clearly attributed to its own publisher, not the Court. | [fedcourt.gov.au/copyright](https://www.fedcourt.gov.au/copyright) |
-| High Court of Australia | Material may be downloaded, displayed, printed, and reproduced in unaltered form, retaining the copyright notice, for **personal, non-commercial use, or use within an organisation**. This is more restrictive than the Federal Court's terms and has no explicit commercial carve-out for judgments. | [hcourt.gov.au/terms-use](https://www.hcourt.gov.au/terms-use) |
+| NSW Caselaw | Reproduction/publication of decisions is authorised provided it is accurate and in proper context, does not indicate (directly or indirectly) that it is an official version, remains consistent with the current official version, complies with any non-publication/suppression order, and does not reproduce editorial material (e.g. headnotes) without further authority. No commercial/non-commercial distinction is drawn. | [caselaw.nsw.gov.au/policy.html](https://www.caselaw.nsw.gov.au/policy.html) |
+| Federal Court of Australia | Judgments and decisions (or excerpts) may be reproduced or published — **including commercially** — in unaltered form, provided it is acknowledged as a judgment/decision of the Court, any added commentary is clearly attributed to its own publisher (not the Court), and the source the judgment was copied from (e.g. AustLII) is acknowledged. | [fedcourt.gov.au/copyright](https://www.fedcourt.gov.au/copyright) |
+| High Court of Australia | Material on the site "may [be used and reproduced] for commercial and non-commercial purposes without further permission", provided you: ensure accuracy; use it respectfully and not in a misleading context; attribute the source as the High Court of Australia; and indicate the reproduction is a copy of the version at the original URL. Reproductions must not be represented as official or as endorsed by the Court. | [hcourt.gov.au/terms-use](https://www.hcourt.gov.au/terms-use) |
 
-### ⚠️ Flagged for legal review: High Court content and commercial use
-
-Unlike the Federal Court, the High Court's stated terms don't include an
-explicit "commercial use is fine for judgments specifically" carve-out —
-the broader "personal/non-commercial or use within an organisation" framing
-applies instead. High Court decisions are explicitly in scope for this
-project's agent (see the system prompt in [`backend/agent.py`](backend/agent.py)),
-which never shows users the raw judgment text — only an AI-generated
-summary (what the court held, how it compares) plus the citation and a link
-back to the source. That's a materially different posture from verbatim
-republication, but it hasn't been tested against this specific term. **Before
-offering any paid/commercial deployment** (see [`PRICING_POLICY.md`](PRICING_POLICY.md)),
-this should be reviewed by counsel.
+All three permit commercial reproduction of judgment text under broadly
+similar conditions: accuracy, clear attribution to the originating court,
+and no implication of official/endorsed status. None of them impose a
+CC-BY-style requirement to also credit the corpus itself — that obligation
+comes from the corpus's own CC BY 4.0 license (above), separately from these
+per-court terms.
 
 ## What the product actually does with this data
 
