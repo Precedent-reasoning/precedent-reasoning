@@ -16,11 +16,11 @@ index maintenance yourself.
 
 | | Free | Paid |
 |---|---|---|
-| Source code | Always free (Apache-2.0) | — |
-| Self-hosted deployment (your own devices/servers) | Always free, no query limits | — |
+| Source code | Free (Apache-2.0) | — |
+| Self-hosted deployment (your own devices/servers) | Free (Apache-2.0) | — |
 | Managed cloud deployment, tailored to your needs | — | Get in touch — scoped and priced per engagement |
 
-## 1. Open source use — free, forever
+## 1. Open source use — free
 
 The full source of Precedent Reasoning is released under the **Apache License,
 Version 2.0** (see `LICENSE`). This grant is already in effect for anyone who
