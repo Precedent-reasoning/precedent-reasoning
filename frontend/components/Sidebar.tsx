@@ -82,6 +82,20 @@ export function Sidebar({ conversations, activeId, onSelect, onNew, onDelete, is
 
       <div className="side-foot">
         Legal information, not advice. Always verify each citation against the original judgment.
+        <br />
+        Case law from the{" "}
+        <a href="https://huggingface.co/datasets/isaacus/open-australian-legal-corpus" target="_blank" rel="noopener noreferrer">
+          Open Australian Legal Corpus
+        </a>{" "}
+        (CC BY 4.0). See{" "}
+        <a
+          href="https://github.com/Precedent-reasoning/precedent-reasoning/blob/main/DATA_LICENSE.md"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          data sources &amp; licensing
+        </a>
+        .
       </div>
     </aside>
   );

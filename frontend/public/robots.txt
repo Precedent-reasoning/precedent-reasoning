@@ -1,0 +1,5 @@
+# /app shows case-law search results with party names in them. NSW Caselaw's
+# publishing policy asks that pages linking to decisions preferably exclude
+# search-engine indexing where party names are visible — see DATA_LICENSE.md.
+User-agent: *
+Disallow: /app

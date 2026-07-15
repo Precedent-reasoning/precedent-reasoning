@@ -174,7 +174,7 @@ function Hero() {
             <span className="powered-lbl">Powered by</span>
             <div className="powered-items">
               <span className="powered-item"><span className="powered-dot"></span>Open Australian Legal Corpus</span>
-              <span className="powered-item"><span className="powered-dot"></span>NSW Caselaw</span>
+              <span className="powered-item"><span className="powered-dot"></span>NSW &amp; Commonwealth courts</span>
             </div>
           </div>
         </div>

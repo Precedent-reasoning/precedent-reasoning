@@ -380,7 +380,7 @@ function CTA() {
 const FOOT = [
   { h: "Product", links: [["How it works", "#how"], ["Under the hood", "#engine"], ["Capabilities", "#features"], ["Coverage", "#coverage"], ["Pricing", "#pricing"]] },
   { h: "Company", links: [["About", "#"], ["Careers", "#"], ["Contact", "#"]] },
-  { h: "Legal", links: [["Terms", "#"], ["Privacy", "#"], ["License (Apache-2.0)", GITHUB_URL + "/blob/main/LICENSE"]] },
+  { h: "Legal", links: [["Terms", "#"], ["Privacy", "#"], ["Code license (Apache-2.0)", GITHUB_URL + "/blob/main/LICENSE"], ["Data sources & licensing", GITHUB_URL + "/blob/main/DATA_LICENSE.md"]] },
 ];
 
 function Footer() {
@@ -404,6 +404,15 @@ function Footer() {
           for general research and educational purposes only. It is not a law firm, does not provide legal advice, and use of the
           service does not create a solicitor–client relationship. AI can make mistakes; always verify citations
           against the original judgment. Case names and results shown on this page are illustrative.
+        </p>
+        <p className="foot-disc">
+          <b>Data:</b> Case law is drawn from the{" "}
+          <a href="https://huggingface.co/datasets/isaacus/open-australian-legal-corpus" target="_blank" rel="noopener noreferrer">Open Australian Legal Corpus</a>{" "}
+          by Umar Butler (Isaacus), licensed under{" "}
+          <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>{" "}
+          — filtered to NSW &amp; Commonwealth court decisions, then chunked and indexed. See{" "}
+          <a href={GITHUB_URL + "/blob/main/DATA_LICENSE.md"} target="_blank" rel="noopener noreferrer">data sources &amp; licensing</a>{" "}
+          for full attribution and the reproduction terms of each source court.
         </p>
         <div className="foot-bottom">
           <p>© 2026 Precedent Reasoning.</p>
