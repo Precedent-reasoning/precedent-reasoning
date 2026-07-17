@@ -1,6 +1,6 @@
 # Data Sources & Licensing
 
-This project's code is Apache-2.0 (see [`LICENSE`](LICENSE)). The **case-law
+This project's code is AGPL-3.0 (see [`LICENSE`](LICENSE)). The **case-law
 data** it indexes is licensed separately, by a different party, under
 different terms. This document exists to give proper attribution and to
 summarise the obligations that travel with that data — including for anyone
@@ -74,5 +74,5 @@ Running `backend/ingest.py` pulls the same corpus under the same CC BY 4.0
 terms. If you deploy the resulting product publicly, the attribution
 obligation above applies to your deployment too — it does not come
 pre-satisfied by this repository's own license. This repo's `LICENSE`
-(Apache-2.0) covers the *code*; it says nothing about the *data*, which is
+(AGPL-3.0) covers the *code*; it says nothing about the *data*, which is
 licensed separately by its own creator under the terms described here.

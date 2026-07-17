@@ -4,7 +4,7 @@
 > language for internal review and for adapting into the landing page and Terms
 > of Service. It is not itself a binding legal agreement. Before publishing
 > equivalent language as official Terms, have it reviewed by counsel — in
-> particular the interaction between this policy and the Apache-2.0 `LICENSE`
+> particular the interaction between this policy and the AGPL-3.0 `LICENSE`
 > should be checked so the two documents never appear to contradict each other.
 
 ## Summary
@@ -16,23 +16,25 @@ index maintenance yourself.
 
 | | Free | Paid |
 |---|---|---|
-| Source code | Free (Apache-2.0) | — |
-| Self-hosted deployment (your own devices/servers) | Free (Apache-2.0) | — |
+| Source code | Free (AGPL-3.0) | — |
+| Self-hosted deployment (your own devices/servers) | Free (AGPL-3.0) | — |
 | Managed cloud deployment, tailored to your needs | — | Get in touch — scoped and priced per engagement |
 
 ## 1. Open source use — free
 
-The full source of Precedent Reasoning is released under the **Apache License,
-Version 2.0** (see `LICENSE`). This grant is already in effect for anyone who
-obtains the code, and this pricing policy does not — and legally cannot —
-narrow it. Concretely, anyone may, at no cost:
+The full source of Precedent Reasoning is released under the **GNU Affero
+General Public License, Version 3.0** (see `LICENSE`). This grant is already
+in effect for anyone who obtains the code, and this pricing policy does not —
+and legally cannot — narrow it. Concretely, anyone may, at no cost:
 
 - Run the full application (backend, ingestion pipeline, and frontend) on
   their own devices, servers, or cloud infrastructure.
 - Use it for personal, academic, non-profit, or commercial purposes.
 - Modify the source and use their modified version.
-- Redistribute the original or modified source, subject to the Apache-2.0
-  terms (attribution, stating changes, including the license and NOTICE file).
+- Redistribute the original or modified source, subject to the AGPL-3.0
+  terms (attribution, stating changes, including the license, and — critically
+  for anyone offering it as a network service — making the source of their
+  modified version available to users of that service).
 
 Self-hosting requires the operator to supply their own Anthropic API key and
 to run their own case-law ingestion (`backend/ingest.py`) or otherwise obtain
@@ -41,7 +43,7 @@ self-hoster's own, separate from anything Precedent Reasoning charges.
 
 We do not, and will not, charge a license fee for the code itself or for
 deploying it on infrastructure you control. Doing so would be inconsistent
-with Apache-2.0, which cannot be revoked for copies already distributed under
+with AGPL-3.0, which cannot be revoked for copies already distributed under
 it.
 
 ## 2. Managed cloud deployment — what's paid
@@ -68,7 +70,8 @@ To avoid ambiguity, paid Cloud plans do **not** gate or restrict:
 - Access to the source code or its ability to run self-hosted.
 - The number of times someone may deploy the open source code on their own
   infrastructure.
-- Forking, modifying, or redistributing the code under Apache-2.0.
+- Forking, modifying, or redistributing the code under AGPL-3.0 (subject to
+  AGPL-3.0's own source-availability terms for network use).
 
 ## 4. Future changes
 

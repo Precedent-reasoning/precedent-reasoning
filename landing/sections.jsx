@@ -311,8 +311,8 @@ function Coverage() {
 }
 
 const TIERS = [
-  { name: "Free", price: "Free", unit: "forever", badge: "Apache-2.0 licensed", desc: "Run the full stack yourself — your infrastructure, your data, your resources.",
-    feats: ["Full source code (Apache-2.0)", "Self-host on your own devices or servers", "No hosting or infrastructure from us", "No support or maintenance from us"],
+  { name: "Free", price: "Free", unit: "forever", badge: "AGPL-3.0 licensed", desc: "Run the full stack yourself — your infrastructure, your data, your resources.",
+    feats: ["Full source code (AGPL-3.0)", "Self-host on your own devices or servers", "No hosting or infrastructure from us", "No support or maintenance from us"],
     cta: "View source on GitHub", icon: "github", href: GITHUB_URL, external: true, primary: false, flag: "Self-hosted", flagAlt: true },
   { name: "Get in Touch", price: "Get In Touch", unit: "", badge: "Cloud & custom deployments", desc: "Our hosted cloud service, tailored and customised to your organisation's needs.",
     feats: ["Fully managed cloud service", "Custom integrations & workflows", "Onboarding & support", "Tailored to your requirements"],
@@ -325,7 +325,7 @@ function Pricing() {
         <Reveal className="section-head" style={{ maxWidth: 720 }}>
           <span className="eyebrow">Pricing</span>
           <h2>Open source, or fully managed — your call.</h2>
-          <p>The full source is released under Apache-2.0 — self-host it for free, forever, on your own infrastructure with your own API key. Prefer a fully managed service, tailored to your organisation? Get in touch and we'll set up cloud hosting and integrations built around your needs.</p>
+          <p>The full source is released under AGPL-3.0 — self-host it for free, forever, on your own infrastructure with your own API key. Prefer a fully managed service, tailored to your organisation? Get in touch and we'll set up cloud hosting and integrations built around your needs.</p>
         </Reveal>
         <div className="price-grid">
           {TIERS.map((t, i) => (
@@ -380,7 +380,7 @@ function CTA() {
 const FOOT = [
   { h: "Product", links: [["How it works", "#how"], ["Under the hood", "#engine"], ["Capabilities", "#features"], ["Coverage", "#coverage"], ["Pricing", "#pricing"]] },
   { h: "Company", links: [["About", "#"], ["Careers", "#"], ["Contact", "#"]] },
-  { h: "Legal", links: [["Terms", "#"], ["Privacy", "#"], ["Code license (Apache-2.0)", GITHUB_URL + "/blob/main/LICENSE"], ["Data sources & licensing", GITHUB_URL + "/blob/main/DATA_LICENSE.md"]] },
+  { h: "Legal", links: [["Terms", "#"], ["Privacy", "#"], ["Code license (AGPL-3.0)", GITHUB_URL + "/blob/main/LICENSE"], ["Data sources & licensing", GITHUB_URL + "/blob/main/DATA_LICENSE.md"]] },
 ];
 
 function Footer() {
