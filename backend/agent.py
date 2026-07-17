@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 
 client = anthropic.AsyncAnthropic()
 MODEL = "claude-sonnet-4-6"
+# Cheap model used only for the post-hoc grounding check on "How it compares
+# to your situation" claims — never user-facing, so a small/fast model is fine.
+VERIFY_MODEL = "claude-haiku-4-5-20251001"
 
 # Hard cap on Claude API calls per request. At MAX_TOOL_ITERATIONS the agent's
 # tool calls are answered with a "wrap up now" error instead of being executed;
@@ -245,6 +248,23 @@ def _extract_case_urls(data) -> set[str]:
     return {c["url"] for c in cases if isinstance(c, dict) and c.get("url") and not c.get("error")}
 
 
+def _extract_case_excerpts(data) -> dict[str, str]:
+    """Map url -> the excerpt text actually shown to Claude for that case
+    (fetch_case's fuller text, falling back to search_cases' snippet), so the
+    grounding check below can verify a claim against the same passage the
+    agent had to work with."""
+    cases = data if isinstance(data, list) else [data]
+    out = {}
+    for c in cases:
+        if not isinstance(c, dict) or c.get("error"):
+            continue
+        url = c.get("url")
+        text = c.get("text") or c.get("snippet")
+        if url and text:
+            out[url] = text
+    return out
+
+
 _MD_LINK_URL_RE = re.compile(r"\]\((https?://[^\s)]+)\)")
 
 
@@ -259,6 +279,156 @@ def _find_unverified_urls(text: str, retrieved_urls: set[str]) -> list[str]:
     """
     cited = set(_MD_LINK_URL_RE.findall(text))
     return sorted(cited - retrieved_urls)
+
+
+_CASE_BLOCK_RE = re.compile(r"(### .*?)(?=\n### |\Z)", re.DOTALL)
+_COMPARISON_RE = re.compile(r"\*\*How it compares to your situation:\*\*\s*(.*?)(?=\n\n---|\Z)", re.DOTALL)
+
+_WITHHELD_COMPARISON = (
+    "*A specific comparison to your situation isn't available for this case — "
+    "please review it directly via the link above to assess its relevance.*"
+)
+
+
+async def _grounding_check(excerpt: str, situation: str, claim: str) -> bool:
+    """
+    Cheap sanity check for one case's "How it compares to your situation"
+    claim: ask a small/fast model whether its case-side facts are consistent
+    with the excerpt retrieved for that case, and its situation-side facts
+    are consistent with what the user actually said — rather than either
+    side being invented or embellished. Deliberately tolerant of paraphrase,
+    summarising, and drawing an analogy, since that's the whole point of the
+    field; it should only fire on actual fabrication. Fails open (treated as
+    grounded) on any API error, so a flaky secondary check never takes down
+    the primary response.
+    """
+    prompt = (
+        "You are fact-checking one field of an AI-generated legal search result. "
+        "The field compares a retrieved case's facts to a user's situation.\n\n"
+        "RETRIEVED CASE EXCERPT:\n"
+        f"{excerpt[:4000]}\n\n"
+        "USER'S SITUATION (as they described it):\n"
+        f"{situation[:2000]}\n\n"
+        "CLAIM TO CHECK:\n"
+        f"{claim[:1000]}\n\n"
+        "Mark UNGROUNDED only if the claim invents specific case facts not stated in "
+        "or reasonably inferable from the excerpt (e.g. wrong amount, wrong outcome, "
+        "invented parties or events), or invents specific facts about the user's "
+        "situation that they never mentioned. Reasonable paraphrasing, summarising, "
+        "or drawing an analogy between the case and the situation is fine and should "
+        "be marked GROUNDED — do not penalise the claim merely for restating the "
+        "user's own situation, since that's expected. Reply with exactly one word: "
+        "GROUNDED or UNGROUNDED."
+    )
+    try:
+        response = await client.messages.create(
+            model=VERIFY_MODEL,
+            max_tokens=5,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except Exception:
+        return True
+    answer = "".join(
+        b.text for b in response.content if getattr(b, "type", None) == "text"
+    ).strip().upper()
+    return "UNGROUNDED" not in answer
+
+
+async def _regenerate_comparison(excerpt: str, situation: str, original_claim: str) -> str | None:
+    """
+    One retry attempt for a claim that failed the grounding check: ask the
+    main model to rewrite just that field, explicitly constrained to the
+    retrieved excerpt and what the user actually said. Returns the rewritten
+    text, or None if the retry call itself errors (caller falls back to the
+    withheld placeholder either way).
+    """
+    prompt = (
+        "Rewrite the following legal case comparison so every claim about the case "
+        "is drawn only from the excerpt below, and every claim about the user's "
+        "situation is drawn only from what they actually said — no invented facts "
+        "on either side. Keep it neutral and descriptive: factual similarities or "
+        "differences only, no conclusions about outcome, no advice. One or two "
+        "sentences.\n\n"
+        "RETRIEVED CASE EXCERPT:\n"
+        f"{excerpt[:4000]}\n\n"
+        "USER'S SITUATION (as they described it):\n"
+        f"{situation[:2000]}\n\n"
+        "ORIGINAL COMPARISON (may contain unsupported claims):\n"
+        f"{original_claim[:1000]}\n\n"
+        "Reply with only the rewritten comparison text — no preamble, no labels."
+    )
+    try:
+        response = await client.messages.create(
+            model=MODEL,
+            max_tokens=300,
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except Exception:
+        return None
+    text = "".join(
+        b.text for b in response.content if getattr(b, "type", None) == "text"
+    ).strip()
+    return text or None
+
+
+async def _verify_case_comparisons(
+    text: str, case_excerpts: dict[str, str], situation: str, rid: str
+) -> str:
+    """
+    Gate: before any case block reaches the user, check its "How it compares
+    to your situation" claim against the excerpt actually retrieved for that
+    case. A claim that fails gets one retry — a constrained rewrite grounded
+    in the same excerpt and situation — before falling back to a neutral
+    placeholder. Everything else in the response (case name, citation,
+    binding status, what the court held) is untouched throughout.
+    """
+    blocks = list(_CASE_BLOCK_RE.finditer(text))
+    if not blocks:
+        return text
+
+    async def _check(match: re.Match):
+        block = match.group(1)
+        url_match = _MD_LINK_URL_RE.search(block)
+        comp_match = _COMPARISON_RE.search(block)
+        if not url_match or not comp_match:
+            return match, None
+        excerpt = case_excerpts.get(url_match.group(1))
+        claim = comp_match.group(1).strip()
+        if not excerpt or not claim:
+            return match, None
+        if await _grounding_check(excerpt, situation, claim):
+            return match, None
+        return match, (excerpt, claim)
+
+    results = await asyncio.gather(*(_check(m) for m in blocks))
+    failed = [(m, payload[0], payload[1]) for m, payload in results if payload]
+    if not failed:
+        return text
+
+    logger.warning("[%s] %d case comparison(s) failed grounding check, retrying", rid, len(failed))
+
+    async def _retry(match: re.Match, excerpt: str, claim: str):
+        new_claim = await _regenerate_comparison(excerpt, situation, claim)
+        if new_claim and await _grounding_check(excerpt, situation, new_claim):
+            return match, new_claim
+        logger.debug("[%s] comparison still withheld after retry: %s", rid, claim[:300])
+        return match, None
+
+    retried = await asyncio.gather(*(_retry(m, e, c) for m, e, c in failed))
+    recovered = sum(1 for _, new_claim in retried if new_claim)
+    logger.info(
+        "[%s] retry recovered %d/%d comparison(s)", rid, recovered, len(retried)
+    )
+
+    for match, new_claim in sorted(retried, key=lambda r: r[0].start(), reverse=True):
+        block = match.group(1)
+        comp_match = _COMPARISON_RE.search(block)
+        replacement = new_claim if new_claim else _WITHHELD_COMPARISON
+        redacted_block = (
+            block[:comp_match.start(1)] + replacement + block[comp_match.end(1):]
+        )
+        text = text[:match.start()] + redacted_block + text[match.end():]
+    return text
 
 
 async def run_agent(situation: str, history: list[dict] | None = None, request_id: str = "-"):
@@ -310,6 +480,9 @@ async def run_agent(situation: str, history: list[dict] | None = None, request_i
     # URLs actually returned by search_cases/fetch_case/fetch_cases this
     # request — the ground truth for the citation-verification check below.
     retrieved_urls: set[str] = set()
+    # url -> excerpt text shown to Claude for that case — ground truth for
+    # the "How it compares" grounding check below.
+    case_excerpts: dict[str, str] = {}
 
     iteration = 0
     while True:
@@ -362,8 +535,9 @@ async def run_agent(situation: str, history: list[dict] | None = None, request_i
                     elif etype == "content_block_delta":
                         delta = event.delta
                         if delta.type == "text_delta":
-                            # True streaming — yield each token as it arrives
-                            yield await _emit("token", text=delta.text)
+                            # Buffered, not streamed live: the final answer is
+                            # gated on the grounding check below, so nothing
+                            # is yielded to the client until that check runs.
                             if assembled_content and assembled_content[-1]["type"] == "text":
                                 assembled_content[-1]["text"] += delta.text
                         elif delta.type == "input_json_delta":
@@ -467,6 +641,7 @@ async def run_agent(situation: str, history: list[dict] | None = None, request_i
                             None, partial(_run_tool_data, tool_name, tool_input)
                         )
                     retrieved_urls |= _extract_case_urls(data)
+                    case_excerpts.update(_extract_case_excerpts(data))
                     result = _tool_result_content(data)
                     tool_elapsed = time.monotonic() - tool_t0
                     logger.info("[%s] tool=%s elapsed=%.2fs", rid, tool_name, tool_elapsed)
@@ -491,9 +666,21 @@ async def run_agent(situation: str, history: list[dict] | None = None, request_i
             truncated = final_message.stop_reason == "max_tokens"
             if truncated:
                 logger.warning("[%s] response truncated at max_tokens", rid)
-                yield await _emit("token", text="\n\n*…the response was cut short due to length.*")
 
             final_text = "".join(b["text"] for b in assembled_content if b["type"] == "text")
+
+            if "### " in final_text:
+                yield await _emit("status", message="Verifying case comparisons...")
+                verify_t0 = time.monotonic()
+                final_text = await _verify_case_comparisons(final_text, case_excerpts, situation, rid)
+                logger.info("[%s] grounding check elapsed=%.2fs", rid, time.monotonic() - verify_t0)
+
+            # Release the verified answer to the client in one shot — nothing
+            # in it was shown before the grounding check above completed.
+            yield await _emit("token", text=final_text)
+            if truncated:
+                yield await _emit("token", text="\n\n*…the response was cut short due to length.*")
+
             unverified_urls = _find_unverified_urls(final_text, retrieved_urls)
             if unverified_urls:
                 logger.warning(
